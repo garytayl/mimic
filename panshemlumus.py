@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import random
 import requests
 import json
 import asyncio
@@ -41,6 +42,7 @@ async def join(ctx):
         await voice_channel.connect()
         print(f"Connected to voice channel: {voice_channel.name}")
         await ctx.respond(f"Joined voice channel: {voice_channel.name}")
+        await speak_random_saying(voice_client)
     else:
         print("Could not find the voice channel to join.")
         await ctx.respond("Voice channel not found.")
@@ -152,7 +154,26 @@ async def speak(ctx, sentence: str):
         print(f"An error occurred: {e}")
         await ctx.followup.send("An error occurred while processing your request.", ephemeral=True)
 
+# Implement the blurb command
+@bot.slash_command(guild_ids=[guild_id], description="Say a random blurb")
+async def blurb(ctx):
+    voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
+    if voice_client and voice_client.is_connected():
+        await speak_random_saying(voice_client)
 
+# Random speech task
+@tasks.loop(minutes=random.randint(5, 30))  # Adjust time interval as needed
+async def random_speech_task():
+    for guild in bot.guilds:
+        voice_client = discord.utils.get(bot.voice_clients, guild=guild)
+        if voice_client and voice_client.is_connected():
+            await speak_random_saying(voice_client)
+
+@random_speech_task.before_loop
+async def before_random_speech_task():
+    await bot.wait_until_ready()
+
+random_speech_task.start()
 
 
 
