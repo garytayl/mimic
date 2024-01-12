@@ -5,5 +5,13 @@
         },
         "api_key": "c1748bf5a2b47be237c2c5a1c7617eb4",
         "current_voice_id": "GniadoD22FBv04lTQitM"
+    },
+    "452151720932540416": {
+        "voices": {
+            "Joe": "gdr4wWhuRX9EkryaooBL",
+            "Squillum": "DgZErJFC5WB6d6IuuuNy"
+        },
+        "api_key": "26360aa3eb480dc420104cd69a119444",
+        "current_voice_id": "DgZErJFC5WB6d6IuuuNy"
     }
 }
