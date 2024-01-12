@@ -31,6 +31,19 @@ async def play_audio_in_vc(voice_client, audio_file):
     while voice_client.is_playing():
         await asyncio.sleep(1)
     print("Finished playing audio in the voice channel.")
+    
+# Load sayings from the JSON file
+with open('bot_sayings.json', 'r') as file:
+    bot_sayings = json.load(file)["sayings"]
+
+# Function to get a random saying
+def get_random_saying():
+    return random.choice(bot_sayings)
+
+# Function to speak a random saying in a voice channel
+async def speak_random_saying(voice_client):
+    saying = get_random_saying()
+    await speak(voice_client, saying)  # Assuming your speak function works with this signature
 
 
 @bot.slash_command(guild_ids=[guild_id], description="Join a voice channel")
@@ -42,7 +55,8 @@ async def join(ctx):
         await voice_channel.connect()
         print(f"Connected to voice channel: {voice_channel.name}")
         await ctx.respond(f"Joined voice channel: {voice_channel.name}")
-        await speak_random_saying(voice_client)
+        await speak(ctx, get_random_saying())
+
     else:
         print("Could not find the voice channel to join.")
         await ctx.respond("Voice channel not found.")
@@ -157,9 +171,7 @@ async def speak(ctx, sentence: str):
 # Implement the blurb command
 @bot.slash_command(guild_ids=[guild_id], description="Say a random blurb")
 async def blurb(ctx):
-    voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
-    if voice_client and voice_client.is_connected():
-        await speak_random_saying(voice_client)
+    await speak(ctx, get_random_saying())
 
 # Random speech task
 @tasks.loop(minutes=random.randint(5, 30))  # Adjust time interval as needed
@@ -167,7 +179,11 @@ async def random_speech_task():
     for guild in bot.guilds:
         voice_client = discord.utils.get(bot.voice_clients, guild=guild)
         if voice_client and voice_client.is_connected():
-            await speak_random_saying(voice_client)
+            # Creating a mock context for the speak function
+            mock_ctx = type('', (), {})()  # Creating an empty object
+            mock_ctx.guild = guild
+            mock_ctx.voice_clients = bot.voice_clients
+            await speak(mock_ctx, get_random_saying())
 
 @random_speech_task.before_loop
 async def before_random_speech_task():
