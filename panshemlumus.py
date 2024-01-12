@@ -1,10 +1,57 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import random
 import requests
 import json
 import asyncio
 import os
+from cryptography.fernet import Fernet
+import cryptography
+
+fernet_key_file = 'fernet_key.txt'
+
+# Function to read the Fernet key
+def read_fernet_key():
+    try:
+        with open("fernet_key.txt", "rb") as key_file:
+            return key_file.read()
+    except FileNotFoundError:
+        print("Fernet key file not found. Generating a new key.")
+        key = Fernet.generate_key()
+        with open("fernet_key.txt", "wb") as key_file:
+            key_file.write(key)
+        return key
+    except Exception as e:
+        print(f"Error reading Fernet key: {e}")
+        exit(1)
+
+# Read the Fernet key
+fernet_key = read_fernet_key()
+cipher_suite = Fernet(fernet_key)
+
+
+# Encryption function
+def encrypt_api_key(api_key):
+    try:
+        return cipher_suite.encrypt(api_key.encode()).decode()
+    except Exception as e:
+        print(f"Error encrypting API key: {e}")
+        return None
+
+# Decryption function
+def decrypt_api_key(encrypted_api_key):
+    try:
+        decrypted = cipher_suite.decrypt(encrypted_api_key.encode()).decode()
+        return decrypted
+    except cryptography.fernet.InvalidToken:
+        print("Error: Invalid Token for decryption.")
+        return None
+    except Exception as e:
+        print(f"Error decrypting API key: {e}")
+        return None
+
+
+
 
 intents = discord.Intents.default()
 intents.guilds = True
@@ -16,6 +63,21 @@ user_voice_preferences = {}
 # Load the configuration file
 with open('config.json') as config_file:
     config = json.load(config_file)
+    discord_token = config['discord_token']
+    guild_id = config['guild_id']  # Ensure this is defined here
+    voice_channel_name = "where the talking goes"
+    text_channel_name = "text-to-speech"
+    base_voice_id = config.get('base_voice_id', 'default_voice_id')
+
+@bot.slash_command(guild_ids=[guild_id], description="Register your ElevenLabs API key")
+async def register_key(ctx, api_key: str):
+    user_id_str = str(ctx.author.id)
+    encrypted_api_key = encrypt_api_key(api_key)
+    if user_id_str not in user_voice_preferences:
+        user_voice_preferences[user_id_str] = {"voices": {}, "api_key": ""}
+    user_voice_preferences[user_id_str]['api_key'] = encrypted_api_key
+    save_user_preferences(user_voice_preferences)
+    await ctx.respond("Your ElevenLabs API key has been registered.", ephemeral=True)
 
 # Use the keys from the configuration file
 discord_token = config['discord_token']
@@ -45,21 +107,25 @@ async def speak_random_saying(voice_client):
     saying = get_random_saying()
     await speak(voice_client, saying)  # Assuming your speak function works with this signature
 
-
 @bot.slash_command(guild_ids=[guild_id], description="Join a voice channel")
 async def join(ctx):
     print("Attempting to join a voice channel.")
     voice_channel = discord.utils.get(ctx.guild.voice_channels, name=voice_channel_name)
     if voice_channel:
         print(f"Found voice channel: {voice_channel.name}, attempting to connect.")
-        await voice_channel.connect()
+        voice_client = await voice_channel.connect()  # Connect to the voice channel
         print(f"Connected to voice channel: {voice_channel.name}")
-        await ctx.respond(f"Joined voice channel: {voice_channel.name}")
-        await speak(ctx, get_random_saying())
-
+        await asyncio.sleep(2)  # Sleep for 2 seconds to ensure the bot is fully connected
+        await speak(ctx, get_random_saying())  # Pass the context and get_random_saying() to the speak function
+        await ctx.followup.send(f"Joined voice channel: {voice_channel.name}")
     else:
         print("Could not find the voice channel to join.")
-        await ctx.respond("Voice channel not found.")
+        await ctx.followup.send("Voice channel not found.")
+
+
+
+
+
 
 @bot.slash_command(guild_ids=[guild_id], description="Add a new voice with a nickname")
 async def add_voice(ctx, nickname: str, voice_id: str):
@@ -106,30 +172,26 @@ async def list_voices(ctx):
 
 
 
-def load_user_preferences():
-    try:
-        with open('user_preferences.json', 'r') as file:
-            data = file.read()
-            if not data:  # File is empty
-                return {}
-            return json.loads(data)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
-
-
 def save_user_preferences(preferences):
+    # Encrypt API keys before saving
+    for user_id, data in preferences.items():
+        if 'api_key' in data:
+            encrypted_api_key = encrypt_api_key(data['api_key'])
+            data['api_key'] = encrypted_api_key
+    
     with open('user_preferences.json', 'w') as file:
         json.dump(preferences, file, indent=4)
 
-@bot.slash_command(guild_ids=[guild_id], description="Register your ElevenLabs API key")
-async def register_key(ctx, api_key: str):
-    user_id_str = str(ctx.author.id)
-    if user_id_str not in user_voice_preferences:
-        user_voice_preferences[user_id_str] = {"voices": {}, "api_key": ""}
-    user_voice_preferences[user_id_str]['api_key'] = api_key
-    save_user_preferences(user_voice_preferences)
-    print(f"Registered API key for user {ctx.author}: {api_key}")  # Debugging print
-    await ctx.respond("Your ElevenLabs API key has been registered.", ephemeral=True)
+def load_user_preferences():
+    try:
+        with open('user_preferences.json', 'r') as file:
+            data = json.load(file)
+            for user_id, preferences in data.items():
+                if 'api_key' in preferences:
+                    preferences['api_key'] = decrypt_api_key(preferences['api_key'])
+            return data
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
 
 @bot.slash_command(guild_ids=[guild_id], description="Speak a sentence using TTS")
@@ -139,34 +201,38 @@ async def speak(ctx, sentence: str):
         voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
 
         if not voice_client or not voice_client.is_connected():
-            await ctx.followup.send("Bot is not connected to the voice channel.", ephemeral=True)
+            await ctx.respond("Bot is not connected to the voice channel.", ephemeral=True)
             return
 
         user_id_str = str(ctx.author.id)
         user_preference = user_voice_preferences.get(user_id_str, {})
-        
         if 'api_key' not in user_preference or not user_preference['api_key']:
-            await ctx.followup.send("Please register your ElevenLabs API key using /register_key.", ephemeral=True)
+            await ctx.respond("Please register your ElevenLabs API key using /register_key.", ephemeral=True)
             return
 
-        api_key = user_preference['api_key']
-        voice_id = user_preference.get('current_voice_id', base_voice_id)
+        encrypted_api_key = user_preference['api_key']
+        api_key = decrypt_api_key(encrypted_api_key)
+        if not api_key:
+            await ctx.respond("Invalid API key. Please re-register your ElevenLabs API key.", ephemeral=True)
+            return
 
-        # Get the nickname associated with the current voice ID
+        voice_id = user_preference.get('current_voice_id', base_voice_id)
         nickname = next((name for name, id in user_preference.get('voices', {}).items() if id == voice_id), 'Default')
+        
+        # Override the default "Mimic is thinking" response with a custom message
+        await ctx.respond(f"{nickname} is speaking")
 
         await process_tts_and_play(voice_client, sentence, voice_id, api_key)
 
         text_channel = discord.utils.get(ctx.guild.text_channels, name=text_channel_name)
         if text_channel:
             await text_channel.send(f"{nickname} spoke: {sentence}")
-
-        # Send an ephemeral confirmation response to the user
-        await ctx.followup.send("Your request has been processed.", ephemeral=True)
-
+        
     except Exception as e:
         print(f"An error occurred: {e}")
-        await ctx.followup.send("An error occurred while processing your request.", ephemeral=True)
+        await ctx.respond("An error occurred while processing your request.", ephemeral=True)
+
+
 
 # Implement the blurb command
 @bot.slash_command(guild_ids=[guild_id], description="Say a random blurb")
@@ -174,22 +240,25 @@ async def blurb(ctx):
     await speak(ctx, get_random_saying())
 
 # Random speech task
-@tasks.loop(minutes=random.randint(5, 30))  # Adjust time interval as needed
+@tasks.loop(minutes=random.randint(1, 2))
 async def random_speech_task():
-    for guild in bot.guilds:
-        voice_client = discord.utils.get(bot.voice_clients, guild=guild)
-        if voice_client and voice_client.is_connected():
-            # Creating a mock context for the speak function
-            mock_ctx = type('', (), {})()  # Creating an empty object
-            mock_ctx.guild = guild
-            mock_ctx.voice_clients = bot.voice_clients
-            await speak(mock_ctx, get_random_saying())
+    try:
+        for guild in bot.guilds:
+            voice_client = discord.utils.get(bot.voice_clients, guild=guild)
+            if voice_client and voice_client.is_connected():
+                mock_ctx = type('', (), {})()  # Creating an empty object
+                mock_ctx.guild = guild
+                mock_ctx.voice_clients = bot.voice_clients
+                await speak(mock_ctx, get_random_saying())
+    except Exception as e:
+        print(f"An error occurred in random_speech_task: {e}")
 
 @random_speech_task.before_loop
 async def before_random_speech_task():
     await bot.wait_until_ready()
 
 random_speech_task.start()
+
 
 
 
