@@ -13,7 +13,7 @@ bot = commands.Bot(command_prefix=lambda _: '', intents=intents)
 user_voice_preferences = {}
 
 # Load the configuration file
-with open('~/echo/config.json') as config_file:
+with open('config.json') as config_file:
     config = json.load(config_file)
 
 # Use the keys from the configuration file
