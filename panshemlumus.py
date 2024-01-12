@@ -7,7 +7,7 @@ import os
 
 intents = discord.Intents.default()
 intents.guilds = True
-bot = commands.Bot(intents=intents)
+bot = commands.Bot(command_prefix=lambda _: '', intents=intents)
 
 # Store user voice ID preferences
 user_voice_preferences = {}
