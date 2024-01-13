@@ -68,6 +68,7 @@ bot = commands.Bot(command_prefix=lambda _: '', intents=intents)
 
 # Store user voice ID preferences
 user_voice_preferences = {}
+DEFAULT_VOICE_ID = "hnE9AUMm7IQABazTkTGI"  # Replace with the actual default voice ID
 
 # Load the configuration file
 with open('config.json') as config_file:
@@ -82,11 +83,20 @@ with open('config.json') as config_file:
 async def register_key(ctx, api_key: str):
     user_id_str = str(ctx.author.id)
     encrypted_api_key = encrypt_api_key(api_key)
-    if user_id_str not in user_voice_preferences:
-        user_voice_preferences[user_id_str] = {"voices": {}, "api_key": ""}
-    user_voice_preferences[user_id_str]['api_key'] = encrypted_api_key
+
+    # If the user is already in the preferences, update their API key
+    # If not, create a new entry with the default voice ID
+    if user_id_str in user_voice_preferences:
+        user_voice_preferences[user_id_str]['api_key'] = encrypted_api_key
+    else:
+        user_voice_preferences[user_id_str] = {
+            "voices": {"default": DEFAULT_VOICE_ID},
+            "api_key": encrypted_api_key
+        }
+
     save_user_preferences(user_voice_preferences)
     await ctx.respond("Your ElevenLabs API key has been registered.", ephemeral=True)
+
 
 # Use the keys from the configuration file
 discord_token = config['discord_token']
@@ -268,7 +278,7 @@ async def speak(sentence: str, ctx=None, voice_client=None):
                 await ctx.respond("Invalid API key. Please re-register your ElevenLabs API key.", ephemeral=True)
             return
 
-        voice_id = user_preference.get('current_voice_id', base_voice_id)
+        voice_id = user_preference.get('current_voice_id', user_preference.get('voices', {}).get('default', DEFAULT_VOICE_ID))
         nickname = next((name for name, id in user_preference.get('voices', {}).items() if id == voice_id), 'Default')
         print(f"Voice ID: {voice_id}, Nickname: {nickname}")
 

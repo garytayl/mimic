@@ -1,0 +1,25 @@
+{
+    "590628940188483584": {
+        "voices": {
+            "default": "hnE9AUMm7IQABazTkTGI"
+        },
+        "api_key": "gAAAAABlojt_dUVe-JyBAR-EyqK4GyBJcSUuRUmr-XEbzYRkgCadBt1WXDr8lconXzaO6bNg9QpM2Bf3gZXHGsgg2mZXFhdPjdYinngNS1pY-rn8XDTrBc1jglRY--CqSDLO7r2XtY15"
+    },
+    "936326211796365394": {
+        "voices": {
+            "default": "hnE9AUMm7IQABazTkTGI",
+            "Brian": "BSpMBpgHifnUaFUeXjay"
+        },
+        "api_key": null,
+        "current_voice_id": "BSpMBpgHifnUaFUeXjay"
+    },
+    "452151720932540416": {
+        "voices": {
+            "default": "hnE9AUMm7IQABazTkTGI",
+            "Joey": "H7RY111OA25CnFgvg8fm",
+            "Joe": "gdr4wWhuRX9EkryaooBL"
+        },
+        "api_key": null,
+        "current_voice_id": "gdr4wWhuRX9EkryaooBL"
+    }
+}
