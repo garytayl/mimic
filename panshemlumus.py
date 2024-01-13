@@ -8,40 +8,50 @@ import os
 from cryptography.fernet import Fernet
 import cryptography
 
+first_caller_user_id = None
+
+
 fernet_key_file = 'fernet_key.txt'
 
 # Function to read the Fernet key
 def read_fernet_key():
     try:
         with open("fernet_key.txt", "rb") as key_file:
-            return key_file.read()
+            key = key_file.read()
+            print(f"Read Fernet key: {key}")
+            return key
     except FileNotFoundError:
         print("Fernet key file not found. Generating a new key.")
         key = Fernet.generate_key()
         with open("fernet_key.txt", "wb") as key_file:
             key_file.write(key)
+            print(f"Generated and saved new Fernet key: {key}")
         return key
     except Exception as e:
         print(f"Error reading Fernet key: {e}")
         exit(1)
+
 
 # Read the Fernet key
 fernet_key = read_fernet_key()
 cipher_suite = Fernet(fernet_key)
 
 
-# Encryption function
 def encrypt_api_key(api_key):
     try:
-        return cipher_suite.encrypt(api_key.encode()).decode()
+        print(f"Encrypting API key: {api_key}")
+        encrypted_key = cipher_suite.encrypt(api_key.encode()).decode()
+        print(f"Encrypted API key: {encrypted_key}")
+        return encrypted_key
     except Exception as e:
         print(f"Error encrypting API key: {e}")
         return None
 
-# Decryption function
 def decrypt_api_key(encrypted_api_key):
     try:
+        print(f"Decrypting API key: {encrypted_api_key}")
         decrypted = cipher_suite.decrypt(encrypted_api_key.encode()).decode()
+        print(f"Decrypted API key: {decrypted}")
         return decrypted
     except cryptography.fernet.InvalidToken:
         print("Error: Invalid Token for decryption.")
@@ -49,8 +59,7 @@ def decrypt_api_key(encrypted_api_key):
     except Exception as e:
         print(f"Error decrypting API key: {e}")
         return None
-
-
+    
 
 
 intents = discord.Intents.default()
@@ -109,18 +118,39 @@ async def speak_random_saying(voice_client):
 
 @bot.slash_command(guild_ids=[guild_id], description="Join a voice channel")
 async def join(ctx):
-    print("Attempting to join a voice channel.")
-    voice_channel = discord.utils.get(ctx.guild.voice_channels, name=voice_channel_name)
-    if voice_channel:
-        print(f"Found voice channel: {voice_channel.name}, attempting to connect.")
-        voice_client = await voice_channel.connect()  # Connect to the voice channel
-        print(f"Connected to voice channel: {voice_channel.name}")
-        await asyncio.sleep(2)  # Sleep for 2 seconds to ensure the bot is fully connected
-        await speak(ctx, get_random_saying())  # Pass the context and get_random_saying() to the speak function
-        await ctx.followup.send(f"Joined voice channel: {voice_channel.name}")
-    else:
-        print("Could not find the voice channel to join.")
-        await ctx.followup.send("Voice channel not found.")
+    global first_caller_user_id, is_bot_in_voice_channel
+
+    if not first_caller_user_id:
+        first_caller_user_id = ctx.author.id
+        print(f"Storing first caller user ID: {first_caller_user_id}")
+
+    try:
+        voice_channel = discord.utils.get(ctx.guild.voice_channels, name=voice_channel_name)
+
+        if not voice_channel:
+            await ctx.respond("Voice channel not found.")
+            return
+
+        voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
+
+        if voice_client and voice_client.channel == voice_channel:
+            if not voice_client.is_connected():
+                # Force disconnect if the client is in a bad state
+                await voice_client.disconnect(force=True)
+            else:
+                await ctx.respond(f"Already connected to {voice_channel.name}")
+                return
+
+        await voice_channel.connect()
+        global is_bot_in_voice_channel
+        is_bot_in_voice_channel = True
+        await ctx.respond(f"Connected to voice channel: {voice_channel.name}")
+
+    except Exception as e:
+        print(f"Error in join command: {e}")
+        await ctx.respond(f"An error occurred: {e}")
+
+
 
 
 
@@ -176,7 +206,7 @@ def save_user_preferences(preferences):
     # Encrypt API keys before saving
     for user_id, data in preferences.items():
         if 'api_key' in data:
-            encrypted_api_key = encrypt_api_key(data['api_key'])
+            encrypted_api_key = (data['api_key'])
             data['api_key'] = encrypted_api_key
     
     with open('user_preferences.json', 'w') as file:
@@ -194,70 +224,112 @@ def load_user_preferences():
         return {}
 
 
-@bot.slash_command(guild_ids=[guild_id], description="Speak a sentence using TTS")
-async def speak(ctx, sentence: str):
+async def speak(sentence: str, ctx=None, voice_client=None):
     try:
-        await ctx.defer()
-        voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
+        print("speak function called")
+        if ctx:
+            print("Context provided, deferring response")
+            await ctx.defer()
+            voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
+            print(f"Voice client from context: {voice_client}, Guild: {ctx.guild}")
 
         if not voice_client or not voice_client.is_connected():
-            await ctx.respond("Bot is not connected to the voice channel.", ephemeral=True)
+            print("No voice client or not connected")
+            if ctx:
+                await ctx.respond("Bot is not connected to the voice channel.", ephemeral=True)
             return
 
-        user_id_str = str(ctx.author.id)
+        user_id_str = str(ctx.author.id) if ctx else str(first_caller_user_id)
+        print(f"User ID: {user_id_str}")
+
         user_preference = user_voice_preferences.get(user_id_str, {})
+        print(f"User preferences: {user_preference}")
+
         if 'api_key' not in user_preference or not user_preference['api_key']:
-            await ctx.respond("Please register your ElevenLabs API key using /register_key.", ephemeral=True)
+            print("API key not found in user preferences")
+            if ctx:
+                await ctx.respond("Please register your ElevenLabs API key using /register_key.", ephemeral=True)
             return
 
         encrypted_api_key = user_preference['api_key']
-        api_key = decrypt_api_key(encrypted_api_key)
+        print(f"Encrypted API key: {encrypted_api_key}")
+
+        # Check if the key appears to be encrypted
+        api_key = encrypted_api_key
+        if api_key and api_key.startswith("gAAAAA"):
+            print("API key appears to be encrypted, decrypting.")
+            api_key = decrypt_api_key(encrypted_api_key)
+
+        print(f"API key used for request: {api_key}")
+
         if not api_key:
-            await ctx.respond("Invalid API key. Please re-register your ElevenLabs API key.", ephemeral=True)
+            print("API key is None or invalid")
+            if ctx:
+                await ctx.respond("Invalid API key. Please re-register your ElevenLabs API key.", ephemeral=True)
             return
 
         voice_id = user_preference.get('current_voice_id', base_voice_id)
         nickname = next((name for name, id in user_preference.get('voices', {}).items() if id == voice_id), 'Default')
-        
-        # Override the default "Mimic is thinking" response with a custom message
-        await ctx.respond(f"{nickname} is speaking")
+        print(f"Voice ID: {voice_id}, Nickname: {nickname}")
 
+        if ctx:
+            print("Responding with custom message")
+            await ctx.respond(f"{nickname} is speaking")
+
+        print(f"Processing TTS and playing audio: {sentence}, Voice ID: {voice_id}, API Key: {api_key}")
         await process_tts_and_play(voice_client, sentence, voice_id, api_key)
 
-        text_channel = discord.utils.get(ctx.guild.text_channels, name=text_channel_name)
-        if text_channel:
-            await text_channel.send(f"{nickname} spoke: {sentence}")
-        
+        if ctx:
+            text_channel = discord.utils.get(ctx.guild.text_channels, name=text_channel_name)
+            if text_channel:
+                print("Sending message to text channel")
+                await text_channel.send(f"{nickname} spoke: {sentence}")
+
     except Exception as e:
-        print(f"An error occurred: {e}")
-        await ctx.respond("An error occurred while processing your request.", ephemeral=True)
+        print(f"An error occurred in speak function: {e}")
+        if ctx:
+            await ctx.respond("An error occurred while processing your request.", ephemeral=True)
 
+# Slash command for speaking a sentence using TTS
+@bot.slash_command(guild_ids=[guild_id], description="Speak a sentence using TTS")
+async def say(ctx, sentence: str):
+    await speak(sentence, ctx=ctx)
 
-
-# Implement the blurb command
+# Slash command for saying a random blurb
 @bot.slash_command(guild_ids=[guild_id], description="Say a random blurb")
 async def blurb(ctx):
-    await speak(ctx, get_random_saying())
+    await say(ctx, get_random_saying())
+
+# Global variable to track if the bot is in a voice channel
+is_bot_in_voice_channel = False
 
 # Random speech task
 @tasks.loop(minutes=random.randint(1, 2))
 async def random_speech_task():
-    try:
-        for guild in bot.guilds:
-            voice_client = discord.utils.get(bot.voice_clients, guild=guild)
-            if voice_client and voice_client.is_connected():
-                mock_ctx = type('', (), {})()  # Creating an empty object
-                mock_ctx.guild = guild
-                mock_ctx.voice_clients = bot.voice_clients
-                await speak(mock_ctx, get_random_saying())
-    except Exception as e:
-        print(f"An error occurred in random_speech_task: {e}")
+    if not is_bot_in_voice_channel:
+        print("Bot is not in a voice channel. Skipping random speech task.")
+        return
+    print("Random speech task started.")
+    for guild in bot.guilds:
+        print(f"Checking guild: {guild.name}")
+        voice_client = discord.utils.get(bot.voice_clients, guild=guild)
+        if voice_client and voice_client.is_connected():
+            print(f"Found connected voice client in guild: {guild.name}")
+            saying = get_random_saying()
+            print(f"Random saying selected: {saying}")
+            await speak(saying, voice_client=voice_client)
 
 @random_speech_task.before_loop
 async def before_random_speech_task():
+    print("Waiting for bot to be ready before starting random speech task.")
     await bot.wait_until_ready()
+    print("Bot is ready, starting random speech task.")
 
 random_speech_task.start()
+
+
+
+
 
 
 
@@ -296,6 +368,16 @@ async def on_ready():
     user_voice_preferences = load_user_preferences()
     print(f'We have logged in as {bot.user}')
 
+@bot.event
+async def on_voice_state_update(member, before, after):
+    global is_bot_in_voice_channel, first_caller_user_id
+    if member == bot.user:
+        if after.channel is None:
+            is_bot_in_voice_channel = False
+            first_caller_user_id = None  # Reset first caller user ID
+            print(f"Bot has disconnected from a voice channel in {member.guild.name}.")
+        else:
+            is_bot_in_voice_channel = True
 
 
 bot.run(discord_token)
