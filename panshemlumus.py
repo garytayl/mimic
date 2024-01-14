@@ -304,7 +304,7 @@ async def speak(sentence: str, ctx=None, voice_client=None):
             print("Responding with custom message")
             await ctx.respond(f"{nickname} is speaking")
 
-        print(f"Processing TTS and playing audio: {sentence}, Voice ID: {voice_id}, API Key: {api_key}")
+        print(f"Processing TTS and playing audio: Voice ID: {voice_id}, API Key: {api_key}")
         await process_tts_and_play(voice_client, sentence, voice_id, api_key)
 
         if ctx:

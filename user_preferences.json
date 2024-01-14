@@ -1,9 +1,12 @@
 {
     "590628940188483584": {
         "voices": {
-            "default": "hnE9AUMm7IQABazTkTGI"
+            "default": "hnE9AUMm7IQABazTkTGI",
+            "biden": "IT8IscXYUn95VeHi1TtA",
+            "Jynxzi": "m5fk31mGtqj8No62oFXn"
         },
-        "api_key": "gAAAAABlojt_dUVe-JyBAR-EyqK4GyBJcSUuRUmr-XEbzYRkgCadBt1WXDr8lconXzaO6bNg9QpM2Bf3gZXHGsgg2mZXFhdPjdYinngNS1pY-rn8XDTrBc1jglRY--CqSDLO7r2XtY15"
+        "api_key": "gAAAAABlpEN31c072cg2k3K8OqWlzrHK0JC7besf31AcIWyNDJU0sh-eeMhxYs8EUIaR1MlnR6xiDmNhTPTK5ReFxwNeDoyceag7cVZ8-ItiOKUvquoZycuY2Hyx4RBDCQPxW789e6l7",
+        "current_voice_id": "m5fk31mGtqj8No62oFXn"
     },
     "936326211796365394": {
         "voices": {
@@ -19,7 +22,7 @@
             "Joey": "H7RY111OA25CnFgvg8fm",
             "Joe": "gdr4wWhuRX9EkryaooBL"
         },
-        "api_key": null,
-        "current_voice_id": "gdr4wWhuRX9EkryaooBL"
+        "api_key": "26360aa3eb480dc420104cd69a119444",
+        "current_voice_id": "H7RY111OA25CnFgvg8fm"
     }
 }
