@@ -126,6 +126,18 @@ async def speak_random_saying(voice_client):
     saying = get_random_saying()
     await speak(voice_client, saying)  # Assuming your speak function works with this signature
 
+@bot.event
+async def on_voice_state_update(member, before, after):
+    global is_bot_in_voice_channel, first_caller_user_id
+    if member == bot.user:
+        if after.channel is None:
+            is_bot_in_voice_channel = False
+            print(f"Bot has disconnected from a voice channel in {member.guild.name}.")
+        elif before.channel is None or before.channel != after.channel:
+            is_bot_in_voice_channel = True
+            print(f"Bot has connected to a voice channel in {member.guild.name}.")
+
+
 @bot.slash_command(guild_ids=[guild_id], description="Join the current voice channel")
 async def join(ctx):
     global first_caller_user_id, is_bot_in_voice_channel
@@ -137,7 +149,7 @@ async def join(ctx):
         return
 
     # Get the voice channel of the command-invoking user
-    voice_channel = voice_state.channel
+    new_voice_channel = voice_state.channel
 
     if not first_caller_user_id:
         first_caller_user_id = ctx.author.id
@@ -146,20 +158,25 @@ async def join(ctx):
     try:
         voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
 
-        if voice_client and voice_client.channel == voice_channel:
-            if not voice_client.is_connected():
-                await voice_client.disconnect(force=True)
+        if voice_client:
+            if voice_client.is_connected():
+                if voice_client.channel != new_voice_channel:
+                    await voice_client.move_to(new_voice_channel)
+                else:
+                    await ctx.respond(f"Already connected to {new_voice_channel.name}")
+                    return
             else:
-                await ctx.respond(f"Already connected to {voice_channel.name}")
-                return
+                await voice_client.disconnect(force=True)
+        else:
+            await new_voice_channel.connect()
 
-        await voice_channel.connect()
         is_bot_in_voice_channel = True
-        await ctx.respond(f"Connected to voice channel: {voice_channel.name}")
+        await ctx.respond(f"Connected to voice channel: {new_voice_channel.name}")
 
     except Exception as e:
         print(f"Error in join command: {e}")
         await ctx.respond(f"An error occurred: {e}")
+
 
 
 
