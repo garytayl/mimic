@@ -126,33 +126,34 @@ async def speak_random_saying(voice_client):
     saying = get_random_saying()
     await speak(voice_client, saying)  # Assuming your speak function works with this signature
 
-@bot.slash_command(guild_ids=[guild_id], description="Join a voice channel")
+@bot.slash_command(guild_ids=[guild_id], description="Join the current voice channel")
 async def join(ctx):
     global first_caller_user_id, is_bot_in_voice_channel
+
+    # Check if the user is in a voice channel
+    voice_state = ctx.author.voice
+    if not voice_state or not voice_state.channel:
+        await ctx.respond("You are not in a voice channel.")
+        return
+
+    # Get the voice channel of the command-invoking user
+    voice_channel = voice_state.channel
 
     if not first_caller_user_id:
         first_caller_user_id = ctx.author.id
         print(f"Storing first caller user ID: {first_caller_user_id}")
 
     try:
-        voice_channel = discord.utils.get(ctx.guild.voice_channels, name=voice_channel_name)
-
-        if not voice_channel:
-            await ctx.respond("Voice channel not found.")
-            return
-
         voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
 
         if voice_client and voice_client.channel == voice_channel:
             if not voice_client.is_connected():
-                # Force disconnect if the client is in a bad state
                 await voice_client.disconnect(force=True)
             else:
                 await ctx.respond(f"Already connected to {voice_channel.name}")
                 return
 
         await voice_channel.connect()
-        global is_bot_in_voice_channel
         is_bot_in_voice_channel = True
         await ctx.respond(f"Connected to voice channel: {voice_channel.name}")
 
@@ -290,10 +291,21 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         await process_tts_and_play(voice_client, sentence, voice_id, api_key)
 
         if ctx:
+            # Try to find the specific 'text-to-speech' channel
             text_channel = discord.utils.get(ctx.guild.text_channels, name=text_channel_name)
+            
+            # Fallback to the first text channel if 'text-to-speech' is not found
+            if not text_channel:
+                text_channel = next((channel for channel in ctx.guild.text_channels if channel.permissions_for(ctx.guild.me).send_messages), None)
+                if text_channel:
+                    print(f"Fallback to general text channel: {text_channel.name}")
+                else:
+                    print("No available text channels found for sending a message.")
+
             if text_channel:
-                print("Sending message to text channel")
                 await text_channel.send(f"{nickname} spoke: {sentence}")
+
+
 
     except Exception as e:
         print(f"An error occurred in speak function: {e}")
@@ -314,7 +326,7 @@ async def blurb(ctx):
 is_bot_in_voice_channel = False
 
 # Random speech task
-@tasks.loop(minutes=random.randint(1, 2))
+@tasks.loop(minutes=random.randint(1, 60))
 async def random_speech_task():
     if not is_bot_in_voice_channel:
         print("Bot is not in a voice channel. Skipping random speech task.")
