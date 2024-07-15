@@ -8,6 +8,9 @@
 4. [How It Works](#how-it-works)
 5. [Notes](#notes)
 
+For information on logging into your server, see the [SSH Login Instructions](ssh_login_instructions.md).
+
+
 ## Overview
 Mimic is a Discord bot designed to use text-to-speech (TTS) functionality with custom voice settings. Each user can register their own ElevenLabs API key and set up custom voices.
 
