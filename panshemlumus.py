@@ -7,6 +7,14 @@ import asyncio
 import os
 from cryptography.fernet import Fernet
 import cryptography
+from dotenv import load_dotenv
+
+load_dotenv()
+
+discord_token = os.getenv('DISCORD_TOKEN')
+elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
+database_url = os.getenv('DATABASE_URL')
+
 
 first_caller_user_id = None
 
