@@ -31,7 +31,7 @@ This document provides information on how to connect to the MySQL database hoste
    ```
    - Enter your master password when prompted.
    
-   - TheN switch to the Database:
+   - Then switch to the Database:
    
    ```sql
    USE user_preferences_db;
