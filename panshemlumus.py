@@ -447,7 +447,13 @@ async def on_ready():
     global user_voice_preferences
     user_voice_preferences = load_user_preferences()
     print(f'We have logged in as {bot.user}')
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} commands")
+    except Exception as e:
+        print(f"Error syncing commands: {e}")
     print("Bot is ready.")
+
 
 # Function to play audio in voice channel
 async def play_audio_in_vc(voice_client, audio_file):
