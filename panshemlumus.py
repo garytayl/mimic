@@ -74,7 +74,7 @@ def decrypt_api_key(encrypted_api_key):
 
 intents = discord.Intents.default()
 intents.guilds = True
-bot = commands.Bot(command_prefix=lambda _: '', intents=intents)
+bot = commands.Bot(command_prefix=lambda bot, msg: '', intents=intents)
 
 # Store user voice ID preferences
 user_voice_preferences = {}
@@ -102,45 +102,6 @@ async def register_key(ctx, api_key: str):
         }
     save_user_preferences(user_voice_preferences)
     await ctx.respond("Your ElevenLabs API key has been registered.", ephemeral=True)
-
-# Use the keys from the configuration file
-discord_token = config['discord_token']
-guild_id = config['guild_id']
-voice_channel_name = "where the talking goes"
-text_channel_name = "text-to-speech"
-base_voice_id = config.get('base_voice_id', 'default_voice_id')  # Set a default value
-
-# Function to play audio in voice channel
-async def play_audio_in_vc(voice_client, audio_file):
-    print("Playing audio in the voice channel.")
-    voice_client.play(discord.FFmpegPCMAudio(audio_file))
-    while voice_client.is_playing():
-        await asyncio.sleep(1)
-    print("Finished playing audio in the voice channel.")
-    
-# Load sayings from the JSON file
-with open('bot_sayings.json', 'r') as file:
-    bot_sayings = json.load(file)["sayings"]
-
-# Function to get a random saying
-def get_random_saying():
-    return random.choice(bot_sayings)
-
-# Function to speak a random saying in a voice channel
-async def speak_random_saying(voice_client):
-    saying = get_random_saying()
-    await speak(voice_client, saying)  # Assuming your speak function works with this signature
-
-@bot.event
-async def on_voice_state_update(member, before, after):
-    global is_bot_in_voice_channel, first_caller_user_id
-    if member == bot.user:
-        if after.channel is None:
-            is_bot_in_voice_channel = False
-            print(f"Bot has disconnected from a voice channel in {member.guild.name}.")
-        elif before.channel is None or before.channel != after.channel:
-            is_bot_in_voice_channel = True
-            print(f"Bot has connected to a voice channel in {member.guild.name}.")
 
 @bot.slash_command(description="Join the current voice channel")
 async def join(ctx):
@@ -213,6 +174,14 @@ async def list_voices(ctx):
     else:
         response = "You have not set up any voices."
     await ctx.respond(response)
+
+@bot.slash_command(description="Speak a sentence using TTS")
+async def say(ctx, sentence: str):
+    await speak(sentence, ctx=ctx)
+
+@bot.slash_command(description="Say a random blurb")
+async def blurb(ctx):
+    await say(ctx, get_random_saying())
 
 def get_db_connection():
     return mysql.connector.connect(
@@ -336,10 +305,12 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         if ctx:
             await ctx.respond("An error occurred while processing your request.", ephemeral=True)
 
+# Slash command for speaking a sentence using TTS
 @bot.slash_command(description="Speak a sentence using TTS")
 async def say(ctx, sentence: str):
     await speak(sentence, ctx=ctx)
 
+# Slash command for saying a random blurb
 @bot.slash_command(description="Say a random blurb")
 async def blurb(ctx):
     await say(ctx, get_random_saying())
@@ -404,6 +375,9 @@ async def on_ready():
     global user_voice_preferences
     user_voice_preferences = load_user_preferences()
     print(f'We have logged in as {bot.user}')
+    # Syncing global commands
+    await bot.tree.sync()
+    print("Global commands synced.")
 
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -416,6 +390,7 @@ async def on_voice_state_update(member, before, after):
         else:
             is_bot_in_voice_channel = True
 
+@bot.event
 async def on_guild_join(guild):
     welcome_message = """
     **Mimic Discord Bot Usage Instructions**
@@ -453,6 +428,5 @@ async def on_guild_join(guild):
         if channel.permissions_for(guild.me).send_messages:
             await channel.send(welcome_message)
             break
-
 
 bot.run(discord_token)
