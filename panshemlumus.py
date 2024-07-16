@@ -9,9 +9,16 @@ from cryptography.fernet import Fernet
 import cryptography
 from dotenv import load_dotenv
 import traceback
+import mysql.connector
+
 
 
 load_dotenv()
+
+RDS_HOST = 'database-1.cbguawgeickp.us-east-2.rds.amazonaws.com'
+RDS_USER = 'garytayl'
+RDS_PASSWORD = '20Ineedtostudymore'
+RDS_DB = 'user_preferences_db'
 
 discord_token = os.getenv('DISCORD_TOKEN')
 elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
@@ -240,26 +247,51 @@ async def list_voices(ctx):
 
 
 
+def get_db_connection():
+    return mysql.connector.connect(
+        host=RDS_HOST,
+        user=RDS_USER,
+        password=RDS_PASSWORD,
+        database=RDS_DB
+    )
+
 def save_user_preferences(preferences):
-    # Encrypt API keys before saving
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
     for user_id, data in preferences.items():
-        if 'api_key' in data:
-            encrypted_api_key = (data['api_key'])
-            data['api_key'] = encrypted_api_key
-    
-    with open('user_preferences.json', 'w') as file:
-        json.dump(preferences, file, indent=4)
+        voices = json.dumps(data.get('voices', {}))
+        current_voice_id = data.get('current_voice_id', '')
+        api_key = data.get('api_key', '')
+        cursor.execute('''INSERT INTO user_preferences (user_id, api_key, voices, current_voice_id)
+                          VALUES (%s, %s, %s, %s)
+                          ON DUPLICATE KEY UPDATE
+                          api_key=VALUES(api_key),
+                          voices=VALUES(voices),
+                          current_voice_id=VALUES(current_voice_id)''',
+                       (user_id, api_key, voices, current_voice_id))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 def load_user_preferences():
-    try:
-        with open('user_preferences.json', 'r') as file:
-            data = json.load(file)
-            for user_id, preferences in data.items():
-                if 'api_key' in preferences:
-                    preferences['api_key'] = decrypt_api_key(preferences['api_key'])
-            return data
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute('SELECT * FROM user_preferences')
+    rows = cursor.fetchall()
+    preferences = {}
+
+    for row in rows:
+        preferences[row['user_id']] = {
+            'api_key': row['api_key'],
+            'voices': json.loads(row['voices']),
+            'current_voice_id': row['current_voice_id']
+        }
+
+    cursor.close()
+    conn.close()
+    return preferences
 
 
 async def speak(sentence: str, ctx=None, voice_client=None):
