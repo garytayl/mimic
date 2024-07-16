@@ -8,7 +8,7 @@
 4. [How It Works](#how-it-works)
 5. [Notes](#notes)
 
-For information on logging into your server, see the [SSH Login Instructions](ssh_login_instructions.md).
+For information on logging into your server, see the [SSH Login Instructions](docs/ssh_login_instructions.md).
 
 For information on managing tmux sessions, see the [tmux Session Management Instructions](docs/tmux_session_management_instructions_v2.md).
 
