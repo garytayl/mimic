@@ -182,6 +182,16 @@ async def say(ctx, sentence: str):
 @bot.slash_command(name="say_blurb", description="Say a random blurb")
 async def blurb(ctx):
     await say(ctx, get_random_saying())
+    
+@bot.slash_command(name="check_characters", description="Check remaining characters")
+async def characters_remaining(ctx):
+    user_id_str = str(ctx.author.id)
+    if user_id_str in user_voice_preferences:
+        remaining_characters = user_voice_preferences[user_id_str].get('remaining_characters', 500)
+        await ctx.respond(f"You have {remaining_characters} characters remaining for today.")
+    else:
+        await ctx.respond("You have not set up any limits.")
+
 
 def get_db_connection():
     return mysql.connector.connect(
