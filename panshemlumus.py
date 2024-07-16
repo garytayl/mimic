@@ -199,17 +199,27 @@ def save_user_preferences(preferences):
         voices = json.dumps(data.get('voices', {}))
         current_voice_id = data.get('current_voice_id', '')
         api_key = data.get('api_key', '')
-        cursor.execute('''INSERT INTO user_preferences (user_id, api_key, voices, current_voice_id)
-                          VALUES (%s, %s, %s, %s)
+        character_limit = data.get('character_limit', 500)
+        remaining_characters = data.get('remaining_characters', 500)
+        subscription_tier = data.get('subscription_tier', 'free')
+        subscription_expiry = data.get('subscription_expiry', None)
+
+        cursor.execute('''INSERT INTO user_preferences (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry)
+                          VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                           ON DUPLICATE KEY UPDATE
                           api_key=VALUES(api_key),
                           voices=VALUES(voices),
-                          current_voice_id=VALUES(current_voice_id)''',
-                       (user_id, api_key, voices, current_voice_id))
+                          current_voice_id=VALUES(current_voice_id),
+                          character_limit=VALUES(character_limit),
+                          remaining_characters=VALUES(remaining_characters),
+                          subscription_tier=VALUES(subscription_tier),
+                          subscription_expiry=VALUES(subscription_expiry)''',
+                       (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry))
 
     conn.commit()
     cursor.close()
     conn.close()
+
 
 def load_user_preferences():
     conn = get_db_connection()
@@ -222,7 +232,11 @@ def load_user_preferences():
         preferences[row['user_id']] = {
             'api_key': row['api_key'],
             'voices': json.loads(row['voices']),
-            'current_voice_id': row['current_voice_id']
+            'current_voice_id': row['current_voice_id'],
+            'character_limit': row['character_limit'],
+            'remaining_characters': row['remaining_characters'],
+            'subscription_tier': row['subscription_tier'],
+            'subscription_expiry': row['subscription_expiry']
         }
 
     cursor.close()
@@ -259,7 +273,6 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         encrypted_api_key = user_preference['api_key']
         print(f"Encrypted API key: {encrypted_api_key}")
 
-        # Check if the key appears to be encrypted
         api_key = encrypted_api_key
         if api_key and api_key.startswith("gAAAAA"):
             print("API key appears to be encrypted, decrypting.")
@@ -281,14 +294,19 @@ async def speak(sentence: str, ctx=None, voice_client=None):
             print("Responding with custom message")
             await ctx.respond(f"{nickname} is speaking")
 
+        remaining_characters = user_preference.get('remaining_characters', 500)
+        if len(sentence) > remaining_characters:
+            await ctx.respond("Character limit exceeded. Please purchase more characters or upgrade your plan.")
+            return
+
         print(f"Processing TTS and playing audio: Voice ID: {voice_id}, API Key: {api_key}")
         await process_tts_and_play(voice_client, sentence, voice_id, api_key)
 
+        user_preference['remaining_characters'] -= len(sentence)
+        save_user_preferences(user_voice_preferences)
+
         if ctx:
-            # Try to find the specific 'text-to-speech' channel
             text_channel = discord.utils.get(ctx.guild.text_channels, name=text_channel_name)
-            
-            # Fallback to the first text channel if 'text-to-speech' is not found
             if not text_channel:
                 text_channel = next((channel for channel in ctx.guild.text_channels if channel.permissions_for(ctx.guild.me).send_messages), None)
                 if text_channel:
@@ -301,7 +319,7 @@ async def speak(sentence: str, ctx=None, voice_client=None):
 
     except Exception as e:
         print(f"An error occurred in speak function: {e}")
-        traceback.print_exc()  # Add this line to print the full traceback
+        traceback.print_exc()
         if ctx:
             await ctx.respond("An error occurred while processing your request.", ephemeral=True)
 
