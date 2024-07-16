@@ -191,7 +191,20 @@ async def characters_remaining(ctx):
         await ctx.respond(f"You have {remaining_characters} characters remaining for today.")
     else:
         await ctx.respond("You have not set up any limits.")
+        
+@tasks.loop(hours=24)
+async def reset_character_limits():
+    print("Resetting character limits for all users")
+    for user_id in user_voice_preferences:
+        user_voice_preferences[user_id]['remaining_characters'] = user_voice_preferences[user_id].get('character_limit', 500)
+    save_user_preferences(user_voice_preferences)
+    print("Character limits reset successfully")
 
+@reset_character_limits.before_loop
+async def before_reset_character_limits():
+    await bot.wait_until_ready()
+
+reset_character_limits.start()
 
 def get_db_connection():
     return mysql.connector.connect(
