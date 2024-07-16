@@ -8,6 +8,8 @@ import os
 from cryptography.fernet import Fernet
 import cryptography
 from dotenv import load_dotenv
+import traceback
+
 
 load_dotenv()
 
@@ -330,10 +332,9 @@ async def speak(sentence: str, ctx=None, voice_client=None):
             if text_channel:
                 await text_channel.send(f"{nickname} spoke: {sentence}")
 
-
-
     except Exception as e:
         print(f"An error occurred in speak function: {e}")
+        traceback.print_exc()  # Add this line to print the full traceback
         if ctx:
             await ctx.respond("An error occurred while processing your request.", ephemeral=True)
 
