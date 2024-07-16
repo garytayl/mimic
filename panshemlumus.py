@@ -89,7 +89,7 @@ with open('config.json') as config_file:
     text_channel_name = "text-to-speech"
     base_voice_id = config.get('base_voice_id', 'default_voice_id')
 
-@bot.slash_command(description="Register your ElevenLabs API key")
+@bot.slash_command(name="register_key", description="Register your ElevenLabs API key")
 async def register_key(ctx, api_key: str):
     user_id_str = str(ctx.author.id)
     encrypted_api_key = encrypt_api_key(api_key)
@@ -103,7 +103,7 @@ async def register_key(ctx, api_key: str):
     save_user_preferences(user_voice_preferences)
     await ctx.respond("Your ElevenLabs API key has been registered.", ephemeral=True)
 
-@bot.slash_command(description="Join the current voice channel")
+@bot.slash_command(name="join", description="Join the current voice channel")
 async def join_channel(ctx):
     global first_caller_user_id, is_bot_in_voice_channel
 
@@ -140,7 +140,7 @@ async def join_channel(ctx):
         print(f"Error in join command: {e}")
         await ctx.respond(f"An error occurred: {e}")
 
-@bot.slash_command(description="Add a new voice with a nickname")
+@bot.slash_command(name="add_voice", description="Add a new voice with a nickname")
 async def add_voice(ctx, nickname: str, voice_id: str):
     user_id_str = str(ctx.author.id)
     if user_id_str not in user_voice_preferences:
@@ -149,7 +149,7 @@ async def add_voice(ctx, nickname: str, voice_id: str):
     save_user_preferences(user_voice_preferences)
     await ctx.respond(f"Added voice '{nickname}' with ID '{voice_id}'")
 
-@bot.slash_command(description="Switch to a different voice by nickname")
+@bot.slash_command(name="change_voice", description="Switch to a different voice by nickname")
 async def change_voice(ctx, nickname: str):
     user_id_str = str(ctx.author.id)
     if user_id_str in user_voice_preferences:
@@ -163,7 +163,7 @@ async def change_voice(ctx, nickname: str):
     else:
         await ctx.respond("You have not set up any voices.")
 
-@bot.slash_command(description="List all voices and their nicknames")
+@bot.slash_command(name="list_voices", description="List all voices and their nicknames")
 async def list_voices(ctx):
     user_id_str = str(ctx.author.id)
     if user_id_str in user_voice_preferences:
@@ -175,11 +175,11 @@ async def list_voices(ctx):
         response = "You have not set up any voices."
     await ctx.respond(response)
 
-@bot.slash_command(description="Speak a sentence using TTS")
+@bot.slash_command(name="say", description="Speak a sentence using TTS")
 async def say(ctx, sentence: str):
     await speak(sentence, ctx=ctx)
 
-@bot.slash_command(description="Say a random blurb")
+@bot.slash_command(name="say", description="Say a random blurb")
 async def blurb(ctx):
     await say(ctx, get_random_saying())
 
