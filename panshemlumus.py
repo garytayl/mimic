@@ -267,7 +267,7 @@ def load_user_preferences():
     return preferences
 
 # Check subscription status using Discord API
-def check_subscription(user_id):
+def check_user_subscription(user_id):
     url = f"https://discord.com/api/v9/users/@me/guilds/{guild_id}/premium"
     headers = {
         "Authorization": f"Bot {os.getenv('DISCORD_TOKEN')}"
@@ -283,11 +283,11 @@ def check_subscription(user_id):
 
 # Command to check remaining characters and subscription status
 @bot.slash_command(name="check_sub", description="Check remaining characters and subscription status")
-async def check_subscription_command(ctx):
+async def check_sub(ctx):
     user_id_str = str(ctx.author.id)
-    if check_subscription(ctx.author.id):
+    if check_user_subscription(ctx.author.id):
         if user_id_str in user_voice_preferences:
-            remaining_characters = user_voice_preferences[user_id_str].get('remaining_characters', 15000)
+            remaining_characters = user_voice_preferences[user_id_str].get('remaining_characters', 500)
             subscription_tier = user_voice_preferences[user_id_str].get('subscription_tier', 'premium')
             await ctx.respond(f"Subscription Tier: {subscription_tier}\nRemaining Characters: {remaining_characters}")
         else:
