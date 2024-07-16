@@ -192,7 +192,7 @@ async def characters_remaining(ctx):
     else:
         await ctx.respond("You have not set up any limits.")
         
-@tasks.loop(hours=24)
+@tasks.loop(hours=720)
 async def reset_character_limits():
     print("Resetting character limits for all users")
     for user_id in user_voice_preferences:
@@ -265,6 +265,37 @@ def load_user_preferences():
     cursor.close()
     conn.close()
     return preferences
+
+# Check subscription status using Discord API
+def check_subscription(user_id):
+    url = f"https://discord.com/api/v9/users/@me/guilds/{guild_id}/premium"
+    headers = {
+        "Authorization": f"Bot {os.getenv('DISCORD_TOKEN')}"
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        entitlements = response.json()
+        for entitlement in entitlements:
+            if entitlement['user_id'] == user_id and entitlement['sku_id'] == 'YOUR_PREMIUM_SKU_ID':
+                return True
+    return False
+
+
+# Command to check remaining characters and subscription status
+@bot.slash_command(name="check_sub", description="Check remaining characters and subscription status")
+async def check_subscription(ctx):
+    user_id_str = str(ctx.author.id)
+    if check_subscription(ctx.author.id):
+        if user_id_str in user_voice_preferences:
+            remaining_characters = user_voice_preferences[user_id_str].get('remaining_characters', 15000)
+            subscription_tier = user_voice_preferences[user_id_str].get('subscription_tier', 'premium')
+            await ctx.respond(f"Subscription Tier: {subscription_tier}\nRemaining Characters: {remaining_characters}")
+        else:
+            await ctx.respond("You have not set up any limits.")
+    else:
+        await ctx.respond("You do not have a premium subscription.")
+
+
 
 async def speak(sentence: str, ctx=None, voice_client=None):
     try:
