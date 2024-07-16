@@ -104,7 +104,7 @@ async def register_key(ctx, api_key: str):
     await ctx.respond("Your ElevenLabs API key has been registered.", ephemeral=True)
 
 @bot.slash_command(description="Join the current voice channel")
-async def join(ctx):
+async def join_channel(ctx):
     global first_caller_user_id, is_bot_in_voice_channel
 
     voice_state = ctx.author.voice
@@ -375,9 +375,29 @@ async def on_ready():
     global user_voice_preferences
     user_voice_preferences = load_user_preferences()
     print(f'We have logged in as {bot.user}')
-    # Syncing global commands
-    await bot.tree.sync()
-    print("Global commands synced.")
+    print("Bot is ready.")
+
+# Function to play audio in voice channel
+async def play_audio_in_vc(voice_client, audio_file):
+    print("Playing audio in the voice channel.")
+    voice_client.play(discord.FFmpegPCMAudio(audio_file))
+    while voice_client.is_playing():
+        await asyncio.sleep(1)
+    print("Finished playing audio in the voice channel.")
+    
+# Load sayings from the JSON file
+with open('bot_sayings.json', 'r') as file:
+    bot_sayings = json.load(file)["sayings"]
+
+# Function to get a random saying
+def get_random_saying():
+    return random.choice(bot_sayings)
+
+# Function to speak a random saying in a voice channel
+async def speak_random_saying(voice_client):
+    saying = get_random_saying()
+    await speak(voice_client, saying)  # Assuming your speak function works with this signature
+
 
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -408,15 +428,15 @@ async def on_guild_join(guild):
     2. `/add_voice [nickname] [voice_id]` - Add a new voice with a nickname for easy reference.
     3. `/change_voice [nickname]` - Switch to a different voice by its nickname.
     4. `/list_voices` - List all your registered voices and their nicknames.
-    5. `/join` - Command Mimic to join your current voice channel.
-    6. `/speak [sentence]` - Mimic will speak the sentence in the voice channel using the selected voice.
+    5. `/join_channel` - Command Mimic to join your current voice channel.
+    6. `/say [sentence]` - Mimic will speak the sentence in the voice channel using the selected voice.
     7. `/blurb` - Mimic will say a random saying.
 
     **How It Works**
     - **Personal Voice Library**: Each user can add multiple voices to their personal library. These voices are identified by unique nicknames and correspond to specific ElevenLabs voice IDs.
     - **Privacy of Voices**: You cannot use or switch to voices added by other users. Each user's voice library is private and unique to their Discord ID.
     - **Switching Voices**: To switch between different voices in your library, use the `/change_voice` command with the nickname of the desired voice.
-    - **Speaking in Voice Channels**: Use the `/speak` command to make Mimic speak a sentence in the voice channel using your current voice preference.
+    - **Speaking in Voice Channels**: Use the `/say` command to make Mimic speak a sentence in the voice channel using your current voice preference.
 
     **Notes**
     - You cannot use voices set up by other users. Each user must add their desired voices individually.
