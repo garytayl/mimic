@@ -10,7 +10,7 @@ import cryptography
 from dotenv import load_dotenv
 import traceback
 import mysql.connector
-import aiohttp  # Ensure you have aiohttp for asynchronous HTTP requests
+import aiohttp
 
 load_dotenv()
 
@@ -267,33 +267,40 @@ def load_user_preferences():
     return preferences
 
 # Check subscription status using Discord API
-def check_user_subscription(user_id):
+async def check_user_subscription(user_id):
     url = f"https://discord.com/api/v9/users/@me/guilds/{guild_id}/premium"
     headers = {
         "Authorization": f"Bot {os.getenv('DISCORD_TOKEN')}"
     }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        entitlements = response.json()
-        for entitlement in entitlements:
-            if entitlement['user_id'] == user_id and entitlement['sku_id'] == 'YOUR_PREMIUM_SKU_ID':
-                return True
-    return False
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            if response.status == 200:
+                entitlements = await response.json()
+                for entitlement in entitlements:
+                    if entitlement['user_id'] == str(user_id) and entitlement['sku_id']:
+                        return True
+            return False
 
-
-# Command to check remaining characters and subscription status
 @bot.slash_command(name="check_sub", description="Check remaining characters and subscription status")
 async def check_sub(ctx):
-    user_id_str = str(ctx.author.id)
-    if check_user_subscription(ctx.author.id):
-        if user_id_str in user_voice_preferences:
-            remaining_characters = user_voice_preferences[user_id_str].get('remaining_characters', 500)
-            subscription_tier = user_voice_preferences[user_id_str].get('subscription_tier', 'premium')
-            await ctx.respond(f"Subscription Tier: {subscription_tier}\nRemaining Characters: {remaining_characters}")
+    try:
+        user_id_str = str(ctx.author.id)
+        print(f"Checking subscription for user ID: {user_id_str}")
+        
+        if await check_user_subscription(ctx.author.id):
+            if user_id_str in user_voice_preferences:
+                remaining_characters = user_voice_preferences[user_id_str].get('remaining_characters', 500)
+                subscription_tier = user_voice_preferences[user_id_str].get('subscription_tier', 'premium')
+                await ctx.respond(f"Subscription Tier: {subscription_tier}\nRemaining Characters: {remaining_characters}")
+            else:
+                await ctx.respond("You have not set up any limits.")
         else:
-            await ctx.respond("You have not set up any limits.")
-    else:
-        await ctx.respond("You do not have a premium subscription.")
+            await ctx.respond("You do not have a premium subscription.")
+    except Exception as e:
+        print(f"Error in check_sub command: {e}")
+        await ctx.respond("An error occurred while checking your subscription status.")
+
+
 
 
 
