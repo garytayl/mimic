@@ -51,13 +51,15 @@ This document provides information on how to connect to the MySQL database hoste
    docker run -it --rm mysql:latest mysql -h database-1.cbguawgeickp.us-east-2.rds.amazonaws.com -u garytayl -p
    ```
 
+   
+      | Column Name       | Data Type      | Description                           |
+      |-------------------|----------------|---------------------------------------|
+      | `user_id`         | VARCHAR(255)   | Primary key, unique user identifier   |
+      | `api_key`         | TEXT           | User's ElevenLabs API key             |
+      | `voices`          | TEXT           | JSON string of user's voice settings  |
+      | `current_voice_id`| VARCHAR(255)   | ID of the currently selected voice    |
+
+
 ## Additional Notes
 - Ensure your RDS instance is properly secured and accessible only from trusted IP addresses.
 - Regularly back up your database to prevent data loss.
-
-| Column Name       | Data Type      | Description                           |
-|-------------------|----------------|---------------------------------------|
-| `user_id`         | VARCHAR(255)   | Primary key, unique user identifier   |
-| `api_key`         | TEXT           | User's ElevenLabs API key             |
-| `voices`          | TEXT           | JSON string of user's voice settings  |
-| `current_voice_id`| VARCHAR(255)   | ID of the currently selected voice    |
