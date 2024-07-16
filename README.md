@@ -12,7 +12,7 @@
 
 - [SSH Login Instructions](docs/ssh_login_instructions.md)
 - [TMUX Session Management](docs/tmux_session_management_instructions_v2.md)
-- [Database Access Instructions](docs/db_access_documentation.md)
+- [Database Access Instructions](docs/db_content.md)
 
 
 
