@@ -297,7 +297,6 @@ async def check_sub(ctx):
 
 
 
-
 async def speak(sentence: str, ctx=None, voice_client=None):
     try:
         print("speak function called")
@@ -443,12 +442,20 @@ async def process_tts_and_play(voice_client, text, voice_id, api_key):
                 print("Failed to generate speech:")
                 print(await response.text())
 
+async def sync_commands():
+    try:
+        await bot.sync_commands()
+        print("Slash commands synchronized successfully.")
+    except Exception as e:
+        print(f"Error syncing commands: {e}")
+
 @bot.event
 async def on_ready():
     global user_voice_preferences
     user_voice_preferences = load_user_preferences()
     print(f'We have logged in as {bot.user}')
     print("Bot is ready.")
+    await sync_commands()
 
 
 # Function to play audio in voice channel
