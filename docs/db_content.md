@@ -30,6 +30,12 @@ This document provides information on how to connect to the MySQL database hoste
    docker run -it --rm mysql:latest mysql -h database-1.cbguawgeickp.us-east-2.rds.amazonaws.com -u garytayl -p
    ```
    - Enter your master password when prompted.
+   
+   - Then switch to the Database:
+   
+   ```sql
+   USE user_preferences_db;
+   ```
 
 ### Using Docker to Run MySQL Client
 
