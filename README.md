@@ -11,7 +11,7 @@
 ## Quick Access
 
 - [SSH Login Instructions](docs/ssh_login_instructions.md)
-- [tmux Session Management](docs/tmux_session_management_instructions_v2.md)
+- [TMUX Session Management](docs/tmux_session_management_instructions_v2.md)
 - [Database Access Instructions](docs/db_access_documentation.md)
 
 
