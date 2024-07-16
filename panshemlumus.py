@@ -103,7 +103,7 @@ async def register_key(ctx, api_key: str):
     save_user_preferences(user_voice_preferences)
     await ctx.respond("Your ElevenLabs API key has been registered.", ephemeral=True)
 
-@bot.slash_command(name="join", description="Join the current voice channel")
+@bot.slash_command(name="join_channel", description="Join the current voice channel")
 async def join_channel(ctx):
     global first_caller_user_id, is_bot_in_voice_channel
 
@@ -175,11 +175,11 @@ async def list_voices(ctx):
         response = "You have not set up any voices."
     await ctx.respond(response)
 
-@bot.slash_command(name="say", description="Speak a sentence using TTS")
+@bot.slash_command(name="say_sentence", description="Speak a sentence using TTS")
 async def say(ctx, sentence: str):
     await speak(sentence, ctx=ctx)
 
-@bot.slash_command(name="say", description="Say a random blurb")
+@bot.slash_command(name="say_blurb", description="Say a random blurb")
 async def blurb(ctx):
     await say(ctx, get_random_saying())
 
