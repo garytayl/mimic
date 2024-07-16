@@ -10,8 +10,7 @@ import cryptography
 from dotenv import load_dotenv
 import traceback
 import mysql.connector
-
-
+import aiohttp  # Ensure you have aiohttp for asynchronous HTTP requests
 
 load_dotenv()
 
@@ -24,23 +23,21 @@ discord_token = os.getenv('DISCORD_TOKEN')
 elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
 database_url = os.getenv('DATABASE_URL')
 
-
 first_caller_user_id = None
-
 
 fernet_key_file = 'fernet_key.txt'
 
 # Function to read the Fernet key
 def read_fernet_key():
     try:
-        with open("fernet_key.txt", "rb") as key_file:
+        with open(fernet_key_file, "rb") as key_file:
             key = key_file.read()
             print(f"Read Fernet key: {key}")
             return key
     except FileNotFoundError:
         print("Fernet key file not found. Generating a new key.")
         key = Fernet.generate_key()
-        with open("fernet_key.txt", "wb") as key_file:
+        with open(fernet_key_file, "wb") as key_file:
             key_file.write(key)
             print(f"Generated and saved new Fernet key: {key}")
         return key
@@ -48,11 +45,9 @@ def read_fernet_key():
         print(f"Error reading Fernet key: {e}")
         exit(1)
 
-
 # Read the Fernet key
 fernet_key = read_fernet_key()
 cipher_suite = Fernet(fernet_key)
-
 
 def encrypt_api_key(api_key):
     try:
@@ -76,8 +71,6 @@ def decrypt_api_key(encrypted_api_key):
     except Exception as e:
         print(f"Error decrypting API key: {e}")
         return None
-    
-
 
 intents = discord.Intents.default()
 intents.guilds = True
@@ -113,7 +106,6 @@ async def register_key(ctx, api_key: str):
 
     save_user_preferences(user_voice_preferences)
     await ctx.respond("Your ElevenLabs API key has been registered.", ephemeral=True)
-
 
 # Use the keys from the configuration file
 discord_token = config['discord_token']
@@ -154,7 +146,6 @@ async def on_voice_state_update(member, before, after):
             is_bot_in_voice_channel = True
             print(f"Bot has connected to a voice channel in {member.guild.name}.")
 
-
 @bot.slash_command(guild_ids=[guild_id], description="Join the current voice channel")
 async def join(ctx):
     global first_caller_user_id, is_bot_in_voice_channel
@@ -194,14 +185,6 @@ async def join(ctx):
         print(f"Error in join command: {e}")
         await ctx.respond(f"An error occurred: {e}")
 
-
-
-
-
-
-
-
-
 @bot.slash_command(guild_ids=[guild_id], description="Add a new voice with a nickname")
 async def add_voice(ctx, nickname: str, voice_id: str):
     user_id_str = str(ctx.author.id)
@@ -215,7 +198,6 @@ async def add_voice(ctx, nickname: str, voice_id: str):
     save_user_preferences(user_voice_preferences)
     
     await ctx.respond(f"Added voice '{nickname}' with ID '{voice_id}'")
-
 
 @bot.slash_command(guild_ids=[guild_id], description="Switch to a different voice by nickname")
 async def change_voice(ctx, nickname: str):
@@ -231,21 +213,18 @@ async def change_voice(ctx, nickname: str):
     else:
         await ctx.respond("You have not set up any voices.")
 
-
 @bot.slash_command(guild_ids=[guild_id], description="List all voices and their nicknames")
 async def list_voices(ctx):
     user_id_str = str(ctx.author.id)
     if user_id_str in user_voice_preferences:
         prefs = user_voice_preferences[user_id_str]
-        nickname = prefs.get('nickname', 'No nickname set')
-        voice_id = prefs.get('voice_id', 'No voice ID set')
-        response = f"Your registered voice:\nNickname: {nickname}\nVoice ID: {voice_id}"
+        response = "Your registered voices:\n"
+        for nickname, voice_id in prefs.get('voices', {}).items():
+            response += f"Nickname: {nickname}, Voice ID: {voice_id}\n"
     else:
         response = "You have not set up any voices."
 
     await ctx.respond(response)
-
-
 
 def get_db_connection():
     return mysql.connector.connect(
@@ -292,7 +271,6 @@ def load_user_preferences():
     cursor.close()
     conn.close()
     return preferences
-
 
 async def speak(sentence: str, ctx=None, voice_client=None):
     try:
@@ -407,13 +385,6 @@ async def before_random_speech_task():
 
 random_speech_task.start()
 
-
-
-
-
-
-
-
 # Function to process TTS and play audio
 async def process_tts_and_play(voice_client, text, voice_id, api_key):
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
@@ -430,17 +401,17 @@ async def process_tts_and_play(voice_client, text, voice_id, api_key):
             "similarity_boost": 0.5
         }
     }
-    response = requests.post(url, json=data, headers=headers)
-
-    if response.status_code == 200:
-        audio_file = 'output.mp3'
-        with open(audio_file, 'wb') as f:
-            f.write(response.content)
-        await play_audio_in_vc(voice_client, audio_file)
-        os.remove(audio_file)
-    else:
-        print("Failed to generate speech:")
-        print(response.text)
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data, headers=headers) as response:
+            if response.status == 200:
+                audio_file = 'output.mp3'
+                with open(audio_file, 'wb') as f:
+                    f.write(await response.read())
+                await play_audio_in_vc(voice_client, audio_file)
+                os.remove(audio_file)
+            else:
+                print("Failed to generate speech:")
+                print(await response.text())
 
 @bot.event
 async def on_ready():
@@ -499,7 +470,5 @@ async def on_guild_join(guild):
         if channel.permissions_for(guild.me).send_messages:
             await channel.send(welcome_message)
             break  # Stop after sending the message to the first eligible channel
-
-
 
 bot.run(discord_token)
