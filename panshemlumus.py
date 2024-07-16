@@ -89,13 +89,10 @@ with open('config.json') as config_file:
     text_channel_name = "text-to-speech"
     base_voice_id = config.get('base_voice_id', 'default_voice_id')
 
-@bot.slash_command(guild_ids=[guild_id], description="Register your ElevenLabs API key")
+@bot.slash_command(description="Register your ElevenLabs API key")
 async def register_key(ctx, api_key: str):
     user_id_str = str(ctx.author.id)
     encrypted_api_key = encrypt_api_key(api_key)
-
-    # If the user is already in the preferences, update their API key
-    # If not, create a new entry with the default voice ID
     if user_id_str in user_voice_preferences:
         user_voice_preferences[user_id_str]['api_key'] = encrypted_api_key
     else:
@@ -103,7 +100,6 @@ async def register_key(ctx, api_key: str):
             "voices": {"default": DEFAULT_VOICE_ID},
             "api_key": encrypted_api_key
         }
-
     save_user_preferences(user_voice_preferences)
     await ctx.respond("Your ElevenLabs API key has been registered.", ephemeral=True)
 
@@ -146,17 +142,15 @@ async def on_voice_state_update(member, before, after):
             is_bot_in_voice_channel = True
             print(f"Bot has connected to a voice channel in {member.guild.name}.")
 
-@bot.slash_command(guild_ids=[guild_id], description="Join the current voice channel")
+@bot.slash_command(description="Join the current voice channel")
 async def join(ctx):
     global first_caller_user_id, is_bot_in_voice_channel
 
-    # Check if the user is in a voice channel
     voice_state = ctx.author.voice
     if not voice_state or not voice_state.channel:
         await ctx.respond("You are not in a voice channel.")
         return
 
-    # Get the voice channel of the command-invoking user
     new_voice_channel = voice_state.channel
 
     if not first_caller_user_id:
@@ -185,21 +179,16 @@ async def join(ctx):
         print(f"Error in join command: {e}")
         await ctx.respond(f"An error occurred: {e}")
 
-@bot.slash_command(guild_ids=[guild_id], description="Add a new voice with a nickname")
+@bot.slash_command(description="Add a new voice with a nickname")
 async def add_voice(ctx, nickname: str, voice_id: str):
     user_id_str = str(ctx.author.id)
-    
-    # Check if the user is already in the user_voice_preferences dictionary
     if user_id_str not in user_voice_preferences:
         user_voice_preferences[user_id_str] = {"voices": {}, "api_key": ""}
-
-    # Add or update the voice nickname and ID in the user's preferences
     user_voice_preferences[user_id_str]["voices"][nickname] = voice_id
     save_user_preferences(user_voice_preferences)
-    
     await ctx.respond(f"Added voice '{nickname}' with ID '{voice_id}'")
 
-@bot.slash_command(guild_ids=[guild_id], description="Switch to a different voice by nickname")
+@bot.slash_command(description="Switch to a different voice by nickname")
 async def change_voice(ctx, nickname: str):
     user_id_str = str(ctx.author.id)
     if user_id_str in user_voice_preferences:
@@ -213,7 +202,7 @@ async def change_voice(ctx, nickname: str):
     else:
         await ctx.respond("You have not set up any voices.")
 
-@bot.slash_command(guild_ids=[guild_id], description="List all voices and their nicknames")
+@bot.slash_command(description="List all voices and their nicknames")
 async def list_voices(ctx):
     user_id_str = str(ctx.author.id)
     if user_id_str in user_voice_preferences:
@@ -223,7 +212,6 @@ async def list_voices(ctx):
             response += f"Nickname: {nickname}, Voice ID: {voice_id}\n"
     else:
         response = "You have not set up any voices."
-
     await ctx.respond(response)
 
 def get_db_connection():
@@ -348,13 +336,11 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         if ctx:
             await ctx.respond("An error occurred while processing your request.", ephemeral=True)
 
-# Slash command for speaking a sentence using TTS
-@bot.slash_command(guild_ids=[guild_id], description="Speak a sentence using TTS")
+@bot.slash_command(description="Speak a sentence using TTS")
 async def say(ctx, sentence: str):
     await speak(sentence, ctx=ctx)
 
-# Slash command for saying a random blurb
-@bot.slash_command(guild_ids=[guild_id], description="Say a random blurb")
+@bot.slash_command(description="Say a random blurb")
 async def blurb(ctx):
     await say(ctx, get_random_saying())
 
@@ -430,7 +416,6 @@ async def on_voice_state_update(member, before, after):
         else:
             is_bot_in_voice_channel = True
 
-@bot.event
 async def on_guild_join(guild):
     welcome_message = """
     **Mimic Discord Bot Usage Instructions**
@@ -464,11 +449,10 @@ async def on_guild_join(guild):
 
     Enjoy using Mimic to enhance your Discord experience!
     """
-
-    # Try to find a channel to send the message
     for channel in guild.text_channels:
         if channel.permissions_for(guild.me).send_messages:
             await channel.send(welcome_message)
-            break  # Stop after sending the message to the first eligible channel
+            break
+
 
 bot.run(discord_token)
