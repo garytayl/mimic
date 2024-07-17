@@ -33,9 +33,9 @@ This document provides information on how to connect to the MySQL database hoste
    
    - Then switch to the Database:
    
-         ```sql
-         USE user_preferences_db;
-         ```
+      ```sql
+      USE user_preferences_db;
+      ```
 
 ### Using Docker to Run MySQL Client
 
