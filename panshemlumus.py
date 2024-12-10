@@ -14,6 +14,8 @@ import aiohttp
 import psycopg2
 from urllib.parse import urlparse
 
+print("DATABASE_URL:", os.environ.get("DATABASE_URL"))
+
 
 
 load_dotenv()
