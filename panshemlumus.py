@@ -14,95 +14,45 @@ import aiohttp
 import psycopg2
 from urllib.parse import urlparse
 
-print("DATABASE_URL:", os.environ.get("DATABASE_URL"))
+# Assign the database URL from environment variables to a variable for use in the code
+database_url = os.getenv("DATABASE_URL")
 
+# Debugging: Print the database URL to ensure it is retrieved correctly
+print("DATABASE_URL:", database_url)
 
-
+# Load environment variables from a .env file
 load_dotenv()
 
+# Retrieve the Discord token and ElevenLabs API key from environment variables
 discord_token = os.getenv('DISCORD_TOKEN')
+elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')  # Use the server's API key
 
+# Ensure the Discord token is present; otherwise, raise an error
 if not discord_token:
     raise ValueError("discord_token environment variable is required.")
 
-elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
-database_url = os.getenv('DATABASE_URL')
+# Ensure the ElevenLabs API key is present; otherwise, raise an error
+if not elevenlabs_api_key:
+    raise ValueError("ELEVENLABS_API_KEY environment variable is required.")
 
+# Variable to track the first user who calls the bot
 first_caller_user_id = None
 
-fernet_key_file = 'fernet_key.txt'
-
-# Function to read the Fernet key
-def read_fernet_key():
-    try:
-        with open(fernet_key_file, "rb") as key_file:
-            key = key_file.read()
-            print(f"Read Fernet key: {key}")
-            return key
-    except FileNotFoundError:
-        print("Fernet key file not found. Generating a new key.")
-        key = Fernet.generate_key()
-        with open(fernet_key_file, "wb") as key_file:
-            key_file.write(key)
-            print(f"Generated and saved new Fernet key: {key}")
-        return key
-    except Exception as e:
-        print(f"Error reading Fernet key: {e}")
-        exit(1)
-
-# Read the Fernet key
-fernet_key = read_fernet_key()
-cipher_suite = Fernet(fernet_key)
-
-def encrypt_api_key(api_key):
-    try:
-        print(f"Encrypting API key: {api_key}")
-        encrypted_key = cipher_suite.encrypt(api_key.encode()).decode()
-        print(f"Encrypted API key: {encrypted_key}")
-        return encrypted_key
-    except Exception as e:
-        print(f"Error encrypting API key: {e}")
-        return None
-
-def decrypt_api_key(encrypted_api_key):
-    try:
-        print(f"Decrypting API key: {encrypted_api_key}")
-        decrypted = cipher_suite.decrypt(encrypted_api_key.encode()).decode()
-        print(f"Decrypted API key: {decrypted}")
-        return decrypted
-    except cryptography.fernet.InvalidToken:
-        print("Error: Invalid Token for decryption.")
-        return None
-    except Exception as e:
-        print(f"Error decrypting API key: {e}")
-        return None
-
+# Configure Discord bot intents and command prefix
 intents = discord.Intents.default()
 intents.guilds = True
 bot = commands.Bot(command_prefix=lambda bot, msg: '', intents=intents)
 
-# Store user voice ID preferences
+# Dictionary to store user-specific voice preferences
 user_voice_preferences = {}
 DEFAULT_VOICE_ID = "NYC9WEgkq1u4jiqBseQ9"  # Replace with the actual default voice ID
 
-@bot.slash_command(name="register_key", description="Register your ElevenLabs API key")
-async def register_key(ctx, api_key: str):
-    user_id_str = str(ctx.author.id)
-    encrypted_api_key = encrypt_api_key(api_key)
-    if user_id_str in user_voice_preferences:
-        user_voice_preferences[user_id_str]['api_key'] = encrypted_api_key
-    else:
-        user_voice_preferences[user_id_str] = {
-            "voices": {"default": DEFAULT_VOICE_ID},
-            "api_key": encrypted_api_key
-        }
-    save_user_preferences(user_voice_preferences)
-    await ctx.respond("Your ElevenLabs API key has been registered.", ephemeral=True)
-
+# Command to join the user's current voice channel
 @bot.slash_command(name="join_channel", description="Join the current voice channel")
 async def join_channel(ctx):
     global first_caller_user_id, is_bot_in_voice_channel
 
+    # Ensure the user is in a voice channel
     voice_state = ctx.author.voice
     if not voice_state or not voice_state.channel:
         await ctx.respond("You are not in a voice channel.")
@@ -110,11 +60,13 @@ async def join_channel(ctx):
 
     new_voice_channel = voice_state.channel
 
+    # Store the first caller's user ID for reference
     if not first_caller_user_id:
         first_caller_user_id = ctx.author.id
         print(f"Storing first caller user ID: {first_caller_user_id}")
 
     try:
+        # Check if the bot is already connected to a voice channel
         voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
 
         if voice_client:
@@ -136,6 +88,7 @@ async def join_channel(ctx):
         print(f"Error in join command: {e}")
         await ctx.respond(f"An error occurred: {e}")
 
+# Command to add a new voice for a user
 @bot.slash_command(name="add_voice", description="Add a new voice with a nickname")
 async def add_voice(ctx, nickname: str, voice_id: str):
     user_id_str = str(ctx.author.id)
@@ -145,6 +98,7 @@ async def add_voice(ctx, nickname: str, voice_id: str):
     save_user_preferences(user_voice_preferences)
     await ctx.respond(f"Added voice '{nickname}' with ID '{voice_id}'")
 
+# Command to switch to a different voice by nickname
 @bot.slash_command(name="change_voice", description="Switch to a different voice by nickname")
 async def change_voice(ctx, nickname: str):
     user_id_str = str(ctx.author.id)
@@ -159,6 +113,7 @@ async def change_voice(ctx, nickname: str):
     else:
         await ctx.respond("You have not set up any voices.")
 
+# Command to list all voices registered by a user
 @bot.slash_command(name="list_voices", description="List all voices and their nicknames")
 async def list_voices(ctx):
     user_id_str = str(ctx.author.id)
@@ -171,10 +126,12 @@ async def list_voices(ctx):
         response = "You have not set up any voices."
     await ctx.respond(response)
 
+# Command to speak a user-provided sentence using text-to-speech
 @bot.slash_command(name="say_sentence", description="Speak a sentence using TTS")
 async def say(ctx, sentence: str):
     await speak(sentence, ctx=ctx)
 
+# Command to say a random pre-defined phrase
 @bot.slash_command(name="say_blurb", description="Say a random blurb")
 async def blurb(ctx):
     await say(ctx, get_random_saying())
