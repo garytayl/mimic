@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 import traceback
 import mysql.connector
 import aiohttp
+import psycopg2
+
 
 load_dotenv()
 
@@ -202,12 +204,14 @@ async def before_reset_character_limits():
 reset_character_limits.start()
 
 def get_db_connection():
-    return mysql.connector.connect(
-        host=RDS_HOST,
-        user=RDS_USER,
-        password=RDS_PASSWORD,
-        database=RDS_DB
+    return psycopg2.connect(
+        host=os.environ.get("PGHOST"),
+        user=os.environ.get("PGUSER"),
+        password=os.environ.get("PGPASSWORD"),
+        dbname=os.environ.get("PGDATABASE"),
+        port=os.environ.get("PGPORT", 5432)  # if PGPORT is set, it will use it, otherwise default to 5432
     )
+
 
 def save_user_preferences(preferences):
     conn = get_db_connection()
