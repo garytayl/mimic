@@ -12,6 +12,8 @@ import traceback
 import mysql.connector
 import aiohttp
 import psycopg2
+from urllib.parse import urlparse
+
 
 
 load_dotenv()
@@ -204,12 +206,13 @@ async def before_reset_character_limits():
 reset_character_limits.start()
 
 def get_db_connection():
+    url = urlparse(os.environ.get("DATABASE_URL"))
     return psycopg2.connect(
-        host=os.environ.get("PGHOST"),
-        user=os.environ.get("PGUSER"),
-        password=os.environ.get("PGPASSWORD"),
-        dbname=os.environ.get("PGDATABASE"),
-        port=os.environ.get("PGPORT", 5432)  # if PGPORT is set, it will use it, otherwise default to 5432
+        host=url.hostname,
+        port=url.port,
+        user=url.username,
+        password=url.password,
+        dbname=url.path.lstrip('/')
     )
 
 print("PGHOST:", os.environ.get("PGHOST"))
