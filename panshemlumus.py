@@ -84,15 +84,6 @@ bot = commands.Bot(command_prefix=lambda bot, msg: '', intents=intents)
 user_voice_preferences = {}
 DEFAULT_VOICE_ID = "hnE9AUMm7IQABazTkTGI"  # Replace with the actual default voice ID
 
-# Load the configuration file
-with open('config.json') as config_file:
-    config = json.load(config_file)
-    discord_token = config['discord_token']
-    guild_id = config['guild_id']  # Ensure this is defined here
-    voice_channel_name = "where the talking goes"
-    text_channel_name = "text-to-speech"
-    base_voice_id = config.get('base_voice_id', 'default_voice_id')
-
 @bot.slash_command(name="register_key", description="Register your ElevenLabs API key")
 async def register_key(ctx, api_key: str):
     user_id_str = str(ctx.author.id)
