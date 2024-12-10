@@ -212,6 +212,11 @@ def get_db_connection():
         port=os.environ.get("PGPORT", 5432)  # if PGPORT is set, it will use it, otherwise default to 5432
     )
 
+print("PGHOST:", os.environ.get("PGHOST"))
+print("PGUSER:", os.environ.get("PGUSER"))
+print("PGPASSWORD:", os.environ.get("PGPASSWORD"))
+print("PGDATABASE:", os.environ.get("PGDATABASE"))
+
 
 def save_user_preferences(preferences):
     conn = get_db_connection()
