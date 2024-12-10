@@ -208,14 +208,14 @@ async def before_reset_character_limits():
 reset_character_limits.start()
 
 def get_db_connection():
-    url = urlparse(os.environ.get("DATABASE_URL"))
-    return psycopg2.connect(
-        host=url.hostname,
-        port=url.port,
-        user=url.username,
-        password=url.password,
-        dbname=url.path.lstrip('/')
-    )
+    dsn = os.environ.get("DATABASE_URL")
+    print("DATABASE_URL inside function:", dsn)
+    if not dsn:
+        raise ValueError("DATABASE_URL is not set! Make sure the Postgres plugin is attached in Railway.")
+    
+    # Psycopg2 can connect directly with a URL:
+    return psycopg2.connect(dsn)
+
 
 print("PGHOST:", os.environ.get("PGHOST"))
 print("PGUSER:", os.environ.get("PGUSER"))
@@ -236,17 +236,18 @@ def save_user_preferences(preferences):
         subscription_tier = data.get('subscription_tier', 'free')
         subscription_expiry = data.get('subscription_expiry', None)
 
-        cursor.execute('''INSERT INTO user_preferences (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry)
-                          VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                          ON DUPLICATE KEY UPDATE
-                          api_key=VALUES(api_key),
-                          voices=VALUES(voices),
-                          current_voice_id=VALUES(current_voice_id),
-                          character_limit=VALUES(character_limit),
-                          remaining_characters=VALUES(remaining_characters),
-                          subscription_tier=VALUES(subscription_tier),
-                          subscription_expiry=VALUES(subscription_expiry)''',
-                       (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry))
+    cursor.execute('''
+        INSERT INTO user_preferences (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (user_id) DO UPDATE SET
+        api_key = EXCLUDED.api_key,
+        voices = EXCLUDED.voices,
+        current_voice_id = EXCLUDED.current_voice_id,
+        character_limit = EXCLUDED.character_limit,
+        remaining_characters = EXCLUDED.remaining_characters,
+        subscription_tier = EXCLUDED.subscription_tier,
+        subscription_expiry = EXCLUDED.subscription_expiry
+    ''', (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry))
 
     conn.commit()
     cursor.close()
