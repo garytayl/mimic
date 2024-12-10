@@ -255,7 +255,7 @@ def save_user_preferences(preferences):
 
 def load_user_preferences():
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
     cursor.execute('SELECT * FROM user_preferences')
     rows = cursor.fetchall()
     preferences = {}
