@@ -389,6 +389,9 @@ async def speak(sentence: str, ctx=None, voice_client=None):
 
         print(f"Processing TTS and playing audio: Voice ID: {voice_id}, API Key: {api_key}")
         await process_tts_and_play(voice_client, sentence, voice_id, api_key)
+        
+        if 'remaining_characters' not in user_preference:
+            user_preference['remaining_characters'] = 500  # or whatever your default is
 
         user_preference['remaining_characters'] -= len(sentence)
         save_user_preferences(user_voice_preferences)
