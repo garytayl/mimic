@@ -236,18 +236,18 @@ def save_user_preferences(preferences):
         subscription_tier = data.get('subscription_tier', 'free')
         subscription_expiry = data.get('subscription_expiry', None)
 
-    cursor.execute('''
-        INSERT INTO user_preferences (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (user_id) DO UPDATE SET
-        api_key = EXCLUDED.api_key,
-        voices = EXCLUDED.voices,
-        current_voice_id = EXCLUDED.current_voice_id,
-        character_limit = EXCLUDED.character_limit,
-        remaining_characters = EXCLUDED.remaining_characters,
-        subscription_tier = EXCLUDED.subscription_tier,
-        subscription_expiry = EXCLUDED.subscription_expiry
-    ''', (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry))
+        cursor.execute('''
+            INSERT INTO user_preferences (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (user_id) DO UPDATE SET
+            api_key = EXCLUDED.api_key,
+            voices = EXCLUDED.voices,
+            current_voice_id = EXCLUDED.current_voice_id,
+            character_limit = EXCLUDED.character_limit,
+            remaining_characters = EXCLUDED.remaining_characters,
+            subscription_tier = EXCLUDED.subscription_tier,
+            subscription_expiry = EXCLUDED.subscription_expiry
+        ''', (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry))
 
     conn.commit()
     cursor.close()
