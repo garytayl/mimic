@@ -389,7 +389,7 @@ async def speak(sentence: str, ctx=None, voice_client=None):
 
         print(f"Processing TTS and playing audio: Voice ID: {voice_id}, API Key: {api_key}")
         await process_tts_and_play(voice_client, sentence, voice_id, api_key)
-        
+
         if 'remaining_characters' not in user_preference:
             user_preference['remaining_characters'] = 500  # or whatever your default is
 
@@ -397,22 +397,15 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         save_user_preferences(user_voice_preferences)
 
         if ctx:
-            text_channel = discord.utils.get(ctx.guild.text_channels, name=text_channel_name)
-            if not text_channel:
-                text_channel = next((channel for channel in ctx.guild.text_channels if channel.permissions_for(ctx.guild.me).send_messages), None)
-                if text_channel:
-                    print(f"Fallback to general text channel: {text_channel.name}")
-                else:
-                    print("No available text channels found for sending a message.")
-
-            if text_channel:
-                await text_channel.send(f"{nickname} spoke: {sentence}")
+            # Directly send the follow-up message in the current channel
+            await ctx.channel.send(f"{nickname} spoke: {sentence}")
 
     except Exception as e:
         print(f"An error occurred in speak function: {e}")
         traceback.print_exc()
         if ctx:
             await ctx.respond("An error occurred while processing your request.", ephemeral=True)
+
 
 # Slash command for speaking a sentence using TTS
 @bot.slash_command(description="Speak a sentence using TTS")
