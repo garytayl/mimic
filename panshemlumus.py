@@ -20,11 +20,6 @@ print("DATABASE_URL:", os.environ.get("DATABASE_URL"))
 
 load_dotenv()
 
-RDS_HOST = 'database-1.cbguawgeickp.us-east-2.rds.amazonaws.com'
-RDS_USER = 'garytayl'
-RDS_PASSWORD = '20Ineedtostudymore'
-RDS_DB = 'user_preferences_db'
-
 discord_token = os.getenv('DISCORD_TOKEN')
 
 if not discord_token:
@@ -88,7 +83,7 @@ bot = commands.Bot(command_prefix=lambda bot, msg: '', intents=intents)
 
 # Store user voice ID preferences
 user_voice_preferences = {}
-DEFAULT_VOICE_ID = "pqHfZKP75CvOIQyINhV4"  # Replace with the actual default voice ID
+DEFAULT_VOICE_ID = "NYC9WEgkq1u4jiqBseQ9"  # Replace with the actual default voice ID
 
 @bot.slash_command(name="register_key", description="Register your ElevenLabs API key")
 async def register_key(ctx, api_key: str):
