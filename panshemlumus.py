@@ -88,7 +88,7 @@ bot = commands.Bot(command_prefix=lambda bot, msg: '', intents=intents)
 
 # Store user voice ID preferences
 user_voice_preferences = {}
-DEFAULT_VOICE_ID = "hnE9AUMm7IQABazTkTGI"  # Replace with the actual default voice ID
+DEFAULT_VOICE_ID = "pqHfZKP75CvOIQyINhV4"  # Replace with the actual default voice ID
 
 @bot.slash_command(name="register_key", description="Register your ElevenLabs API key")
 async def register_key(ctx, api_key: str):
