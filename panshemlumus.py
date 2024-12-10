@@ -20,6 +20,10 @@ RDS_PASSWORD = '20Ineedtostudymore'
 RDS_DB = 'user_preferences_db'
 
 discord_token = os.getenv('DISCORD_TOKEN')
+
+if not discord_token:
+    raise ValueError("discord_token environment variable is required.")
+
 elevenlabs_api_key = os.getenv('ELEVENLABS_API_KEY')
 database_url = os.getenv('DATABASE_URL')
 
@@ -302,6 +306,29 @@ async def check_sub(ctx):
 
 
 
+@bot.command(name="set_voice_channel")
+@commands.has_permissions(administrator=True)
+async def set_voice_channel(ctx, channel_name):
+    """Set the bot's default voice channel for this server."""
+    guild = ctx.guild
+    voice_channel = discord.utils.get(guild.voice_channels, name=channel_name)
+    if voice_channel:
+        await ctx.send(f"Voice channel set to: {voice_channel.name}")
+        # Store this configuration in a database or in-memory dictionary
+    else:
+        await ctx.send(f"Voice channel {channel_name} not found.")
+
+@bot.command(name="set_text_channel")
+@commands.has_permissions(administrator=True)
+async def set_text_channel(ctx, channel_name):
+    """Set the bot's default text channel for this server."""
+    guild = ctx.guild
+    text_channel = discord.utils.get(guild.text_channels, name=channel_name)
+    if text_channel:
+        await ctx.send(f"Text channel set to: {text_channel.name}")
+        # Store this configuration in a database or in-memory dictionary
+    else:
+        await ctx.send(f"Text channel {channel_name} not found.")
 
 
 async def speak(sentence: str, ctx=None, voice_client=None):
@@ -506,35 +533,36 @@ async def on_guild_join(guild):
     **Overview**
     Mimic is a Discord bot designed to use text-to-speech (TTS) functionality with custom voice settings. Each user can register their own ElevenLabs API key and set up custom voices.
 
-    **Setting Up**
-    1. **Register for ElevenLabs**: If you don't have an ElevenLabs account, create one [here](https://elevenlabs.io).
-    2. **Get Your ElevenLabs API Key**: Find your API key in your ElevenLabs account settings.
-    3. **Access Voice Library**: Choose and manage your voices on ElevenLabs [voice library](https://elevenlabs.io/voice-library).
+    **Default Setup**
+    - Mimic will attempt to use the first available text and voice channels.
+    - You can customize channels using the `/set_voice_channel` and `/set_text_channel` commands.
 
     **Commands**
-    1. `/register_key [api_key]` - Register your ElevenLabs API key with Mimic.
-    2. `/add_voice [nickname] [voice_id]` - Add a new voice with a nickname for easy reference.
-    3. `/change_voice [nickname]` - Switch to a different voice by its nickname.
-    4. `/list_voices` - List all your registered voices and their nicknames.
-    5. `/join_channel` - Command Mimic to join your current voice channel.
-    6. `/say [sentence]` - Mimic will speak the sentence in the voice channel using the selected voice.
-    7. `/blurb` - Mimic will say a random saying.
+    1. `/register_key [api_key]` - Register your ElevenLabs API key.
+    2. `/add_voice [nickname] [voice_id]` - Add a new voice with a nickname.
+    3. `/change_voice [nickname]` - Switch to a different voice.
+    4. `/list_voices` - List all your registered voices.
+    5. `/set_voice_channel [channel_name]` - Set the bot's default voice channel.
+    6. `/set_text_channel [channel_name]` - Set the bot's default text channel.
 
-    **How It Works**
-    - **Personal Voice Library**: Each user can add multiple voices to their personal library. These voices are identified by unique nicknames and correspond to specific ElevenLabs voice IDs.
-    - **Privacy of Voices**: You cannot use or switch to voices added by other users. Each user's voice library is private and unique to their Discord ID.
-    - **Switching Voices**: To switch between different voices in your library, use the `/change_voice` command with the nickname of the desired voice.
-    - **Speaking in Voice Channels**: Use the `/say` command to make Mimic speak a sentence in the voice channel using your current voice preference.
-
-    **Notes**
-    - You cannot use voices set up by other users. Each user must add their desired voices individually.
-    - Make sure to register your ElevenLabs API key using the `/register_key` command before using Mimic.
-
-    Enjoy using Mimic to enhance your Discord experience!
+    Enjoy using Mimic!
     """
-    for channel in guild.text_channels:
-        if channel.permissions_for(guild.me).send_messages:
-            await channel.send(welcome_message)
-            break
+
+    # Dynamically detect text and voice channels
+    text_channel = discord.utils.get(guild.text_channels, permissions_for=guild.me, send_messages=True)
+    voice_channel = discord.utils.get(guild.voice_channels, permissions_for=guild.me, connect=True)
+
+    # Log detected channels
+    print(f"Joined guild: {guild.name}")
+    if text_channel:
+        print(f"Detected text channel: {text_channel.name}")
+        await text_channel.send(welcome_message)
+    else:
+        print("No suitable text channel found.")
+
+    if voice_channel:
+        print(f"Detected voice channel: {voice_channel.name}")
+    else:
+        print("No suitable voice channel found.")
 
 bot.run(discord_token)
