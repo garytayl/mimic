@@ -176,24 +176,22 @@ def save_user_preferences(preferences):
     for user_id, data in preferences.items():
         voices = json.dumps(data.get('voices', {}))
         current_voice_id = data.get('current_voice_id', '')
-        api_key = data.get('api_key', '')
         character_limit = data.get('character_limit', 500)
         remaining_characters = data.get('remaining_characters', 500)
         subscription_tier = data.get('subscription_tier', 'free')
         subscription_expiry = data.get('subscription_expiry', None)
 
         cursor.execute('''
-            INSERT INTO user_preferences (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO user_preferences (user_id, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (user_id) DO UPDATE SET
-            api_key = EXCLUDED.api_key,
             voices = EXCLUDED.voices,
             current_voice_id = EXCLUDED.current_voice_id,
             character_limit = EXCLUDED.character_limit,
             remaining_characters = EXCLUDED.remaining_characters,
             subscription_tier = EXCLUDED.subscription_tier,
             subscription_expiry = EXCLUDED.subscription_expiry
-        ''', (user_id, api_key, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry))
+        ''', (user_id, voices, current_voice_id, character_limit, remaining_characters, subscription_tier, subscription_expiry))
 
     conn.commit()
     cursor.close()
@@ -209,7 +207,6 @@ def load_user_preferences():
 
     for row in rows:
         preferences[row['user_id']] = {
-            'api_key': row['api_key'],
             'voices': json.loads(row['voices']),
             'current_voice_id': row['current_voice_id'],
             'character_limit': row['character_limit'],
@@ -221,6 +218,7 @@ def load_user_preferences():
     cursor.close()
     conn.close()
     return preferences
+
 
 # Check subscription status using Discord API
 async def check_user_subscription(user_id):
