@@ -412,14 +412,6 @@ async def blurb(ctx):
 # Global variable to track if the bot is in a voice channel
 is_bot_in_voice_channel = False
 
-@random_speech_task.before_loop
-async def before_random_speech_task():
-    print("Waiting for bot to be ready before starting random speech task.")
-    await bot.wait_until_ready()
-    print("Bot is ready, starting random speech task.")
-
-random_speech_task.start()
-
 # Function to process TTS and play audio
 async def process_tts_and_play(voice_client, text, voice_id, api_key):
     try:
