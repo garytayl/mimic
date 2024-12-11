@@ -400,31 +400,47 @@ random_speech_task.start()
 
 # Function to process TTS and play audio
 async def process_tts_and_play(voice_client, text, voice_id, api_key):
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-    headers = {
-        "Accept": "audio/mpeg",
-        "Content-Type": "application/json",
-        "xi-api-key": api_key
-    }
-    data = {
-        "text": text,
-        "model_id": "eleven_monolingual_v1",  # You might want to make this configurable as well
-        "voice_settings": {
-            "stability": 0.5,
-            "similarity_boost": 0.5
+    try:
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+        headers = {
+            "Accept": "audio/mpeg",
+            "Content-Type": "application/json",
+            "xi-api-key": api_key
         }
-    }
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=data, headers=headers) as response:
-            if response.status == 200:
-                audio_file = 'output.mp3'
-                with open(audio_file, 'wb') as f:
-                    f.write(await response.read())
-                await play_audio_in_vc(voice_client, audio_file)
-                os.remove(audio_file)
-            else:
-                print("Failed to generate speech:")
-                print(await response.text())
+        data = {
+            "text": text,
+            "model_id": "eleven_monolingual_v1",  # You might want to make this configurable as well
+            "voice_settings": {
+                "stability": 0.5,
+                "similarity_boost": 0.5
+            }
+        }
+
+        print(f"Sending request to ElevenLabs API: URL={url}, Data={data}, Headers={headers}")
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=data, headers=headers) as response:
+                print(f"Response status: {response.status}")
+                if response.status == 200:
+                    audio_file = 'output.mp3'
+                    print(f"Saving audio to {audio_file}...")
+                    with open(audio_file, 'wb') as f:
+                        f.write(await response.read())
+                    
+                    print("Playing audio in voice channel...")
+                    await play_audio_in_vc(voice_client, audio_file)
+                    
+                    print(f"Deleting temporary audio file: {audio_file}")
+                    os.remove(audio_file)
+                else:
+                    print("Failed to generate speech:")
+                    error_text = await response.text()
+                    print(f"Error response: {error_text}")
+                    raise Exception(f"ElevenLabs API returned an error: {response.status}, {error_text}")
+    except Exception as e:
+        print(f"Error in process_tts_and_play: {e}")
+        traceback.print_exc()
+
 
 async def sync_commands():
     try:
