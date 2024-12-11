@@ -309,17 +309,25 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         user_preference = user_voice_preferences.get(user_id_str, {})
         print(f"User preferences: {user_preference}")
 
-        # Use server-level API key
-        api_key = os.getenv('ELEVENLABS_API_KEY')
-        if not api_key:
-            print("ELEVENLABS_API_KEY environment variable is not set")
+        # Debugging voice ID selection
+        print("Starting voice ID selection process...")
+        current_voice_id = user_preference.get('current_voice_id')
+        default_voice_id = user_preference.get('voices', {}).get('default')
+        global_default_voice_id = DEFAULT_VOICE_ID
+
+        print(f"current_voice_id: {current_voice_id}")
+        print(f"default_voice_id from user preferences: {default_voice_id}")
+        print(f"global DEFAULT_VOICE_ID: {global_default_voice_id}")
+
+        voice_id = current_voice_id or default_voice_id or global_default_voice_id
+        print(f"Final selected voice_id: {voice_id}")
+
+        if not voice_id:
+            print("No valid Voice ID found. Please configure a default voice.")
             if ctx:
-                await ctx.respond("Server's ElevenLabs API key is missing. Contact the administrator.", ephemeral=True)
+                await ctx.respond("No valid voice configured. Please set a default voice in your preferences.", ephemeral=True)
             return
 
-        print(f"API key used for request: {api_key}")
-
-        voice_id = user_preference.get('current_voice_id', user_preference.get('voices', {}).get('default', DEFAULT_VOICE_ID))
         nickname = next((name for name, id in user_preference.get('voices', {}).items() if id == voice_id), 'Default')
         print(f"Voice ID: {voice_id}, Nickname: {nickname}")
 
@@ -328,21 +336,21 @@ async def speak(sentence: str, ctx=None, voice_client=None):
             await ctx.respond(f"{nickname} is speaking")
 
         remaining_characters = user_preference.get('remaining_characters', 500)
+        print(f"Remaining characters before this sentence: {remaining_characters}")
         if len(sentence) > remaining_characters:
+            print("Character limit exceeded.")
             await ctx.respond("Character limit exceeded. Please purchase more characters or upgrade your plan.")
             return
 
-        print(f"Processing TTS and playing audio: Voice ID: {voice_id}, API Key: {api_key}")
-        await process_tts_and_play(voice_client, sentence, voice_id, api_key)
+        print(f"Processing TTS and playing audio: Voice ID: {voice_id}, Sentence: '{sentence}'")
+        await process_tts_and_play(voice_client, sentence, voice_id, os.getenv('ELEVENLABS_API_KEY'))
 
-        if 'remaining_characters' not in user_preference:
-            user_preference['remaining_characters'] = 500  # or whatever your default is
+        user_preference['remaining_characters'] = user_preference.get('remaining_characters', 500) - len(sentence)
+        print(f"Remaining characters after this sentence: {user_preference['remaining_characters']}")
 
-        user_preference['remaining_characters'] -= len(sentence)
         save_user_preferences(user_voice_preferences)
 
         if ctx:
-            # Directly send the follow-up message in the current channel
             await ctx.channel.send(f"{nickname} spoke: {sentence}")
 
     except Exception as e:
@@ -350,6 +358,7 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         traceback.print_exc()
         if ctx:
             await ctx.respond("An error occurred while processing your request.", ephemeral=True)
+
 
 
 # Slash command for speaking a sentence using TTS
