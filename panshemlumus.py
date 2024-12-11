@@ -412,22 +412,6 @@ async def blurb(ctx):
 # Global variable to track if the bot is in a voice channel
 is_bot_in_voice_channel = False
 
-# Random speech task
-@tasks.loop(minutes=random.randint(1, 60))
-async def random_speech_task():
-    if not is_bot_in_voice_channel:
-        print("Bot is not in a voice channel. Skipping random speech task.")
-        return
-    print("Random speech task started.")
-    for guild in bot.guilds:
-        print(f"Checking guild: {guild.name}")
-        voice_client = discord.utils.get(bot.voice_clients, guild=guild)
-        if voice_client and voice_client.is_connected():
-            print(f"Found connected voice client in guild: {guild.name}")
-            saying = get_random_saying()
-            print(f"Random saying selected: {saying}")
-            await speak(saying, voice_client=voice_client)
-
 @random_speech_task.before_loop
 async def before_random_speech_task():
     print("Waiting for bot to be ready before starting random speech task.")
