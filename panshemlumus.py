@@ -200,6 +200,7 @@ def save_user_preferences(preferences):
     conn.close()
 
 
+
 def load_user_preferences():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -327,6 +328,9 @@ async def speak(sentence: str, ctx=None, voice_client=None):
             print(f"Invalid voice_id detected: {voice_id}. Falling back to DEFAULT_VOICE_ID.")
             voice_id = DEFAULT_VOICE_ID
 
+            # Log the update before modifying preferences
+            print(f"Updating user {user_id_str} preferences. Setting default voice to {DEFAULT_VOICE_ID}.")
+
             # Update user preferences to remove invalid voice
             user_preference['voices']['default'] = DEFAULT_VOICE_ID
             save_user_preferences({user_id_str: user_preference})
@@ -371,6 +375,20 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         if ctx:
             await ctx.respond("An error occurred while processing your request.", ephemeral=True)
 
+def remove_invalid_voice(user_id, valid_voice_ids):
+    print(f"Cleaning up invalid voice IDs for user {user_id}...")
+
+    # Fetch user preferences from the database
+    user_preferences = load_user_preferences()
+    if user_id in user_preferences:
+        user_preference = user_preferences[user_id]
+        if user_preference['voices']['default'] not in valid_voice_ids:
+            print(f"Invalid default voice found for user {user_id}. Resetting to DEFAULT_VOICE_ID.")
+            user_preference['voices']['default'] = DEFAULT_VOICE_ID
+
+            # Save the updated preferences
+            save_user_preferences({user_id: user_preference})
+            print(f"Updated user preferences for user {user_id}.")
 
 # Slash command for speaking a sentence using TTS
 @bot.slash_command(description="Speak a sentence using TTS")
