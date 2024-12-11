@@ -208,8 +208,12 @@ def load_user_preferences():
     preferences = {}
 
     for row in rows:
+        # Safely handle 'voices' if it's NULL or empty
+        voices = row['voices'] if row['voices'] else "{}"
+        voices = voices if isinstance(voices, dict) else json.loads(voices)
+
         preferences[row['user_id']] = {
-            'voices': row['voices'] if isinstance(row['voices'], dict) else json.loads(row['voices']),
+            'voices': voices,
             'current_voice_id': row['current_voice_id'],
             'character_limit': row['character_limit'],
             'remaining_characters': row['remaining_characters'],
