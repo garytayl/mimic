@@ -209,7 +209,7 @@ def load_user_preferences():
 
     for row in rows:
         preferences[row['user_id']] = {
-            'voices': json.loads(row['voices']),
+            'voices': row['voices'] if isinstance(row['voices'], dict) else json.loads(row['voices']),
             'current_voice_id': row['current_voice_id'],
             'character_limit': row['character_limit'],
             'remaining_characters': row['remaining_characters'],
@@ -220,6 +220,7 @@ def load_user_preferences():
     cursor.close()
     conn.close()
     return preferences
+
 
 
 # Check subscription status using Discord API
