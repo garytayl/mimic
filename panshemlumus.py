@@ -309,27 +309,15 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         user_preference = user_voice_preferences.get(user_id_str, {})
         print(f"User preferences: {user_preference}")
 
-        if 'api_key' not in user_preference or not user_preference['api_key']:
-            print("API key not found in user preferences")
+        # Use server-level API key
+        api_key = os.getenv('ELEVENLABS_API_KEY')
+        if not api_key:
+            print("ELEVENLABS_API_KEY environment variable is not set")
             if ctx:
-                await ctx.respond("Please register your ElevenLabs API key using /register_key.", ephemeral=True)
+                await ctx.respond("Server's ElevenLabs API key is missing. Contact the administrator.", ephemeral=True)
             return
-
-        encrypted_api_key = user_preference['api_key']
-        print(f"Encrypted API key: {encrypted_api_key}")
-
-        api_key = encrypted_api_key
-        if api_key and api_key.startswith("gAAAAA"):
-            print("API key appears to be encrypted, decrypting.")
-            api_key = decrypt_api_key(encrypted_api_key)
 
         print(f"API key used for request: {api_key}")
-
-        if not api_key:
-            print("API key is None or invalid")
-            if ctx:
-                await ctx.respond("Invalid API key. Please re-register your ElevenLabs API key.", ephemeral=True)
-            return
 
         voice_id = user_preference.get('current_voice_id', user_preference.get('voices', {}).get('default', DEFAULT_VOICE_ID))
         nickname = next((name for name, id in user_preference.get('voices', {}).items() if id == voice_id), 'Default')
