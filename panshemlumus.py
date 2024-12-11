@@ -15,6 +15,15 @@ import psycopg2
 import psycopg2.extras
 from urllib.parse import urlparse
 
+import subprocess
+
+try:
+    result = subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print("FFmpeg Installed Successfully:", result.stdout.decode())
+except FileNotFoundError:
+    print("FFmpeg is not installed or not found in PATH.")
+
+
 # Assign the database URL from environment variables to a variable for use in the code
 database_url = os.getenv("DATABASE_URL")
 
