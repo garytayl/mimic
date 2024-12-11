@@ -12,6 +12,7 @@ import traceback
 import mysql.connector
 import aiohttp
 import psycopg2
+import psycopg2.extras
 from urllib.parse import urlparse
 
 # Assign the database URL from environment variables to a variable for use in the code
@@ -165,8 +166,9 @@ def get_db_connection():
     if not dsn:
         raise ValueError("DATABASE_URL is not set! Make sure the Postgres plugin is attached in Railway.")
     
-    # Psycopg2 can connect directly with a URL:
-    return psycopg2.connect(dsn)
+    # Connect to the database and set the default cursor factory to DictCursor
+    return psycopg2.connect(dsn, cursor_factory=psycopg2.extras.DictCursor)
+
 
 
 def save_user_preferences(preferences):
