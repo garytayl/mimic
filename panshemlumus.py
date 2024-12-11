@@ -320,6 +320,18 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         print(f"global DEFAULT_VOICE_ID: {global_default_voice_id}")
 
         voice_id = current_voice_id or default_voice_id or global_default_voice_id
+
+        # Validate the voice_id
+        valid_voice_ids = ["NYC9WEgkq1u4jiqBseQ9"]  # Replace with all valid voice IDs
+        if voice_id not in valid_voice_ids:
+            print(f"Invalid voice_id detected: {voice_id}. Falling back to DEFAULT_VOICE_ID.")
+            voice_id = DEFAULT_VOICE_ID
+
+            # Update user preferences to remove invalid voice
+            user_preference['voices']['default'] = DEFAULT_VOICE_ID
+            save_user_preferences({user_id_str: user_preference})
+            print(f"Updated user preferences for user {user_id_str} in the database.")
+
         print(f"Final selected voice_id: {voice_id}")
 
         if not voice_id:
@@ -348,7 +360,7 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         user_preference['remaining_characters'] = user_preference.get('remaining_characters', 500) - len(sentence)
         print(f"Remaining characters after this sentence: {user_preference['remaining_characters']}")
 
-        save_user_preferences(user_voice_preferences)
+        save_user_preferences({user_id_str: user_preference})
 
         if ctx:
             await ctx.channel.send(f"{nickname} spoke: {sentence}")
@@ -358,7 +370,6 @@ async def speak(sentence: str, ctx=None, voice_client=None):
         traceback.print_exc()
         if ctx:
             await ctx.respond("An error occurred while processing your request.", ephemeral=True)
-
 
 
 # Slash command for speaking a sentence using TTS
